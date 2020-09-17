@@ -1,0 +1,17 @@
+server:
+  port: 9521
+spring:
+  application:
+    name: etocrm-sdk-server
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.100.20.243:8848
+      config:
+        file-extension: yml
+        server-addr: 10.100.20.243:8848
+  elasticsearch:
+    rest:
+      uris: ["10.10.6.33:9200", "10.10.6.34:9200", "10.10.6.35:9200"]
+
+

@@ -1,0 +1,59 @@
+server:
+  port: 9520
+spring:
+  application:
+    name: gateway-server
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.100.20.243:8848
+      config:
+        file-extension: yml
+        server-addr: 10.100.20.243:8848
+    gateway:
+      routes:
+        - id: etocrm-sdk-server
+          uri: lb://etocrm-sdk-server
+          predicates:
+            - Path=/sdk/**
+          filters:
+            - StripPrefix=1
+        - id: etocrm-tag-server
+          uri: lb://etocrm-tag-server
+          predicates:
+            - Path=/tag/**
+          filters:
+            - StripPrefix=1
+knife4j:
+  production: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+nacos:
+  config:
+    group: DEFAULT_GROUP
+    dataID: gateway-server.json
+    namespace: test
+# ribbon负载均衡
+ribbon:
+  eager-load:
+    enabled: true # 饥饿加载(eager-load)模式
+  MaxAutoRetries: 1 # 对当前实例的重试次数
+  MaxAutoRetriesNextServer: 2 # 切换实例的重试次数
+  ConnectTimeout: 10000 # 连接超时时间
+  ReadTimeout: 20000 # 读取数据超时
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 60000 # 5s,路由转发时HystrixCommand的执行超时时间，执行超过该时间会进行服务降级处理
+feign:
+  hystrix:
+    enabled: true
+gateway:
+  ignoreUrl:
+    - /tag/**

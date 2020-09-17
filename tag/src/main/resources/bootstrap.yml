@@ -1,0 +1,27 @@
+server:
+  port: 9522
+spring:
+  application:
+    name: etocrm-tag-server
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.100.20.243:8848
+      config:
+        file-extension: yml
+        server-addr: 10.100.20.243:8848
+  elasticsearch:
+    rest:
+      uris: 10.10.6.33:9200, 10.10.6.34:9200, 10.10.6.35:9200
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 60000 # 5s,路由转发时HystrixCommand的执行超时时间，执行超过该时间会进行服务降级处理
+knife4j:
+  production: false
+feign:
+  hystrix:
+    enabled: true
