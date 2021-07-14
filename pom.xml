@@ -13,6 +13,7 @@
         <module>sdk</module>
         <module>tag</module>
         <module>gateway</module>
+        <module>sdk-one</module>
     </modules>
     <packaging>pom</packaging>
     <description>父工程,统一管理jar包版本</description>

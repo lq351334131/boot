@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.IpMapper">
+
+    <insert id="batchInsert" parameterType="com.etocrm.sdk.entity.ip.IpVO">
+        insert into ip (reqIp,province,city,appkey,uu) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.reqIp},  #{item.province}, #{item.city},#{item.appkey},#{item.uu})
+        </foreach>
+    </insert>
+
+    <select id="selectIp" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="java.util.HashMap">
+          select  ip.reqIp reqIp, ip.appkey appkey,ip.uu uu  from
+          (
+           select reqIp,appkey ,uu from ip   group by reqIp,appkey ,uu
+          )  a global  right  join (
+            select    reqIp,appkey ,uu   from  youngor04_all a  where dt=#{dt}     group by reqIp,appkey ,uu
+         ) ip
+       on  a.reqIp=ip.reqIp where   empty(a.reqIp )=1
+        limit #{pageIndex}, #{pageSize}
+    </select>
+
+    <select id="selectIpCount" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="java.lang.Integer">
+       select  count(ip.reqIp)  from
+         (
+           select reqIp,appkey ,uu from ip   group by reqIp,appkey ,uu
+         )   a global  right  join (
+            select    reqIp,appkey ,uu   from  youngor04_all a  where dt=#{dt}     group by reqIp,appkey ,uu
+         ) ip
+       on  a.reqIp=ip.reqIp where  empty(a.reqIp )=1
+    </select>
+
+    <select id="selectUser" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="com.etocrm.sdk.entity.user.UserDeatil">
+         select appkey,nickname,openId ,unionId,gender,user1.uu uu,user1.time1 createtime from
+         (
+          select uu from sdk_user   group by uu
+         )   a global  right  join (
+            select   appkey,nickname,uu,openId ,unionId,gender,min(`time`) time1  from  youngor04_all a   where   dt=#{dt} and   notEmpty(nickname) and notEmpty(openId)  and notEmpty(unionId)  group by appkey,nickname,uu,openId ,unionId,gender
+         ) user1
+       on  a.uu=user1.uu where   empty(a.uu )=1
+       order by user1.time1 desc
+          limit #{pageIndex}, #{pageSize}
+    </select>
+
+    <select id="selectUserCount" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="java.lang.Integer">
+       select  count(user1.uu)  from
+         (
+          select uu from sdk_user   group by uu
+         )   a global  right  join (
+            select   appkey,nickname,uu,openId ,unionId,gender  from  youngor04_all a  where  dt=#{dt} and   notEmpty(nickname) and notEmpty(openId)  and notEmpty(unionId)  group by appkey,nickname,uu,openId ,unionId,gender
+         ) user1
+       on  a.uu=user1.uu where   empty(a.uu )=1
+    </select>
+
+    <insert id="batchUserInsert" parameterType="com.etocrm.sdk.entity.user.UserDeatil">
+        insert into sdk_user (unionId,openId,uu,appkey,nickname,gender,createtime) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.unionId},  #{item.openId}, #{item.uu},#{item.appkey},#{item.nickname},#{item.gender},#{item.createtime})
+        </foreach>
+    </insert>
+
+    <insert id="batchInsert1" parameterType="com.etocrm.sdk.entity.ip.IpVO">
+        insert into ip1 (reqIp,province,city,dt) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.reqIp},  #{item.province}, #{item.city},#{item.dt})
+        </foreach>
+    </insert>
+
+    <select id="selectIp1" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="java.util.HashMap">
+           select    reqIp   from  youngor04_all a  where dt=#{dt}  group by reqIp order by reqIp
+          limit #{pageIndex}, #{pageSize}
+    </select>
+
+    <select id="selectIpCount1" parameterType="com.etocrm.sdk.entity.ip.IpPageVO" resultType="java.lang.Integer">
+            select    uniqExact(reqIp)  from  youngor04_all a  where dt=#{dt}
+    </select>
+
+
+
+</mapper>

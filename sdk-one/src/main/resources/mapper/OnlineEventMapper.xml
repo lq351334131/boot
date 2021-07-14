@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.OnlineEventMapper">
+
+
+    <select id="getShopList" resultType="com.etocrm.sdk.entity.online.Shop" parameterType="com.etocrm.sdk.entity.online.OnlinePage">
+         select
+        visitParamExtractString(json,'k') k,
+        visitParamExtractString(json,'v') v,
+        appkey,
+        year,
+        quarter,
+        month,
+        unionId,
+        openId,
+        mobiePhone,
+        nickname,
+        visitpath,
+        uu,
+        t,
+        dt
+    from
+        (
+        select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1, appkey, year, quarter, month, unionId, openId, mobiePhone, nickname, visitpath, uu, t, dt
+        from
+            eto.youngortest_all
+        where
+            getshop = 1    and  dt=#{dt} ) a array
+    join a1 as json
+    where k = 'shop_id'
+    </select>
+
+    <select id="getShopCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.online.OnlinePage">
+         select count(1) from (
+          select
+            visitParamExtractString(json,'k') k
+    from
+        (
+        select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1, appkey, year, quarter, month, unionId, openId, mobiePhone, nickname, visitpath, uu, t, dt
+        from
+            eto.youngortest_all
+        where
+            getshop = 1  and   dt=#{dt} ) a array
+         join a1 as json
+          where k = 'shop_id'
+         ) a
+    </select>
+
+    <insert id="batchShopInsert" parameterType="com.etocrm.sdk.entity.online.Shop">
+        insert into getshop
+            select  appkey,
+            year,
+            quarter,
+            month,
+            unionId,
+            openId,
+            mobiePhone,
+            nickname,
+            visitpath,
+            uu,
+            t,
+            dt,
+            shopp_id,
+            time,
+            gender,
+            model,
+            systems,
+            networktype,
+            path,
+            query,
+            scene,
+            back ,
+             reqIp
+             from (
+            select appkey,scene,
+            year,
+            quarter,
+            month,
+            unionId,
+            openId,
+            mobiePhone,
+            nickname,
+            visitpath,
+            uu,
+            t,
+            dt,
+            time,
+            gender,
+            model,
+            systems,
+            networktype,
+            path,
+            query,
+            scene,
+            back,reqIp,
+            assumeNotNull(paramte) a1,
+            visitParamExtractString(a1,'shop_id') shopp_id
+            from youngortest_all   sa  where getshop =1
+            and  dt=#{dt}
+     )
+
+    </insert>
+    <insert id="batchAddCartInsert" parameterType="com.etocrm.sdk.entity.online.Shop">
+        insert into add_to_cart
+        select
+            a.appkey,
+            a.year,
+            a.quarter,
+            a.month,
+            a.unionId,
+            a.openId,
+            a.mobiePhone,
+            a.nickname,
+            a.visitpath,
+            a.uu,
+            a.t,
+            a.dt,
+            a.time,
+            a.gender,
+            a.model,
+            a.systems,
+            a.networktype,
+            a.path,
+            a.query,
+            a.scene,
+            a.back,
+            a.action_type,
+            a.sku_id,
+            a.sku_name,
+            a.shipping_shop_id,
+            a.shipping_shop_name,
+            a.original_price,
+            a.current_price,
+            a.sku_num,
+            a.reqIp,
+            a.product_id,
+            a.product_name,
+            a.spu_id,
+            a.spu_name,
+            a.id
+            from (
+            select
+            a.appkey,
+            a.year,
+            a.quarter,
+            a.month,
+            a.unionId,
+            a.openId,
+            a.mobiePhone,
+            a.nickname,
+            a.visitpath,
+            a.uu,
+            a.t,
+            a.dt,
+            a.time,
+            a.gender,
+            a.model,
+            a.systems,
+            a.networktype,
+            a.path,
+            a.query,
+            a.scene,
+            a.back,
+            a.reqIp,
+            JSONExtractString(paramte,'action_type') action_type,
+            JSONExtractInt(paramte,'sku_num') sku_num,
+            JSONExtractRaw(paramte,'product') product,
+            JSONExtractString(product,'product_id') product_id,
+            JSONExtractString(product,'product_name') product_name,
+            JSONExtractRaw(paramte,'sale') sale,
+             JSONExtractFloat(sale,'original_price') original_price,
+            JSONExtractFloat(sale,'current_price') current_price,
+           visitParamExtractRaw(paramte,'sku') sku,
+             JSONExtractString(sku,'sku_id') sku_id,
+            JSONExtractString(sku,'sku_name') sku_name,
+             JSONExtractRaw(paramte,'spu') spu,
+             JSONExtractString(spu,'spu_id') spu_id,
+            JSONExtractString(spu,'spu_name') spu_name,
+            visitParamExtractRaw(paramte,'shipping_shop') shipping_shop,
+             visitParamExtractInt(shipping_shop,'shipping_shop_id') shipping_shop_id,
+            visitParamExtractString(shipping_shop,'shipping_shop_name') shipping_shop_name,
+            visitParamExtractString(paramte,'id') id
+              from youngortest_all   a  where  addtocart =1 and  dt=#{dt}
+
+            ) a
+
+    </insert>
+
+    <insert id="batchCustInsert" parameterType="com.etocrm.sdk.entity.online.Shop">
+     insert into  custom_order
+      select
+            a.appkey,
+            a.year,
+            a.quarter,
+            a.month,
+            a.unionId,
+            a.openId,
+            a.mobiePhone,
+            a.nickname,
+            a.visitpath,
+            a.uu,
+            a.t,
+            a.dt,
+            a.time,
+            a.gender,
+            a.model,
+            a.systems,
+            a.networktype,
+            a.path,
+            a.query,
+            a.scene,
+            a.back,
+            a.order_id,
+            a.order_time,
+            a.order_status,
+            a.sub_order_id,
+            a.pay_amt,
+            a.order_amt,
+            a.reqIp,
+            a.sub_orders
+            from
+    (  select
+               appkey,
+                year,
+                quarter,
+                month,
+                unionId,
+                openId,
+                mobiePhone,
+                nickname,
+                visitpath,
+                uu,
+                t,
+                dt,
+                time,
+                gender,
+                model,
+                systems,
+                networktype,
+                path,
+                query,
+                scene,
+                back,reqIp,
+         visitParamExtractRaw(paramte,'sub_orders') sub_orders,
+        JSONExtractFloat(paramte,'pay_amt') pay_amt,
+       JSONExtractFloat(paramte,'order_amt') order_amt,
+       visitParamExtractString(paramte,'sub_order_id') sub_order_id,
+         visitParamExtractRaw(paramte,'order') order1,
+
+         visitParamExtractString(order1,'order_status') order_status,
+        visitParamExtractString(order1,'order_id') order_id,
+        visitParamExtractInt(order1,'order_time') order_time
+    from sdk052701 where customorder=1  and dt=#{dt}
+
+        ) a
+
+
+
+
+
+
+    </insert>
+
+    <insert id="batchSearchInsert" parameterType="com.etocrm.sdk.entity.online.Shop">
+        insert into searchs
+        select
+            appkey,
+            year,
+            quarter,
+            month,
+            unionId,
+            openId,
+            mobiePhone,
+            nickname,
+            visitpath,
+            uu,
+            t,
+            dt,
+            time,
+            gender,
+            model,
+            systems,
+            networktype,
+            path,
+            query,
+            scene,
+            back,
+            reqIp,
+            keyword
+             from (
+            select appkey,scene,
+            year,
+            quarter,
+            month,
+            unionId,
+            openId,
+            mobiePhone,
+            nickname,
+            visitpath,
+            uu,
+            t,
+            dt,
+            time,
+            gender,
+            model,
+            systems,
+            networktype,
+            path,
+            query,
+            scene,
+            back,reqIp,
+            assumeNotNull(paramte) te1,
+            visitParamExtractString(te1,'keyword') keyword
+            from youngortest_all   sa  where search =1
+            and  dt=#{dt}
+     )
+
+    </insert>
+
+    <!--
+     arrayJoin 中json有\会出现值获取失败
+     {\"order_id\":\"YGR10210525149988391\",\"order_time\":1621914998000,\"order_status\":\"give_order\"}
+    -->
+    <select id="getShop" resultType="com.etocrm.sdk.entity.online.OnlineTotalData" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select count(1) pv, uniqExact(uu)uv  from getshop g
+      where appkey=#{appKey}
+      and dt &lt;= #{endDate}
+      and  dt &gt;=  #{beginDate}
+    </select>
+    <select id="getShopUrl" resultType="com.etocrm.sdk.entity.online.VisitpathVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select path  visitpath, count(1) num  from getshop g
+      where appkey=#{appKey}
+      and dt &lt;= #{endDate}
+      and  dt &gt;=  #{beginDate}
+      group by path
+    </select>
+
+    <select id="getAddcart" resultType="com.etocrm.sdk.entity.online.OnlineTotalData" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select  count(product_id)pv ,uniqExact(uu)uv  from  (
+         select concat(cast(shopp_id as String),'')  shopp_id ,uu from getshop   a
+        ) a left join (
+         select shipping_shop_id,uu,product_id
+
+         from add_to_cart  a
+        ) b on  a.shopp_id=b.shipping_shop_id
+
+    </select>
+
+    <select id="getAddcartProduct" resultType="com.etocrm.sdk.entity.online.AddCartVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select product_id productId, count(1)pv  from  (
+         select concat(cast(shopp_id as String),'')  shopp_id ,uu from getshop   a
+        ) a left join (
+         select shipping_shop_id,uu,product_id
+
+         from add_to_cart  a
+        ) b on  a.shopp_id=b.shipping_shop_id
+        group by product_id
+
+    </select>
+
+    <select id="getSearch" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+          select count(1) from eto.searchs s
+      where appkey=#{appKey}
+      and dt &lt;= #{endDate}
+      and  dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getSearchTotal" resultType="com.etocrm.sdk.entity.online.SearchVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+     select `search`,count(1) num from eto.searchs s
+      where appkey=#{appKey}
+      and dt &lt;= #{endDate}
+      and  dt &gt;=  #{beginDate}
+      group by `search`
+    </select>
+
+
+    <select id="getCampionTotal" resultType="com.etocrm.sdk.entity.campaign.TotalVO" parameterType="com.etocrm.sdk.entity.campaign.CampaignVO">
+        <if test="type==1">
+            select count(1) pv ,uniqExact(uu) uv from  youngortest_all    s where
+            appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            and visitpath =#{visitpath}
+            and pageshow=1
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramq ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+
+        </if>
+        <!-- <if test="type==3">
+             select visitpath ,path,sharepath,
+             path(sharepath) sharepath1	,
+             queryString(sharepath) params1
+             from sdk052701 sa  where pageshare =1 and appkey =#{appKey}
+             and dt &lt;= #{endDate}
+             and  dt &gt;=  #{beginDate}
+             and visitpath =#{visitpath}
+             <trim suffixOverrides=",">
+             <foreach collection="visList" item="item" index="index"  >
+                 and  sharepath like  concat('%',#{item.key},'=',#{item.value},'%')
+             </foreach>
+             </trim>
+
+
+         </if>-->
+
+        <if test="type==2 ">
+            select count(1) pv ,uniqExact(uu) uv from  youngortest_all    s where tv='event'
+            and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramte ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+
+
+        </if>
+
+    </select>
+
+    <select id="getParamList" resultType="com.etocrm.sdk.entity.campaign.ParamList" parameterType="com.etocrm.sdk.entity.campaign.CampaignVO">
+        <if test="type==1">
+            select key1 `key` ,value ,count(1) pv,uniqExact(uu) uv from (
+            select
+            assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,uu,
+            visitParamExtractString(json,'k') key1,
+            visitParamExtractString(json,'v') value
+            from youngortest_all   s where pageshow=1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and dt &gt;= #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramq ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+            )a  group by key1,value
+
+        </if>
+        <!--<if test="type==3">
+           &lt;!&ndash; select visitpath ,path,sharepath,
+            path(sharepath) sharepath1	,
+            queryString(sharepath) params1
+            from sdk052701 sa  where pageshare =1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index"  >
+                    and  sharepath like  concat('%',#{item.key},'=',#{item.value},'%')
+                </foreach>
+            </trim>&ndash;&gt;
+
+            select key1 `key` ,value ,count(1) pv,uniqExact(uu) uv from (
+            select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,uu,
+            visitParamExtractString(json,'k') key1,
+            visitParamExtractString(json,'v') value
+            from eto.sdk0524 s where  pageshare =1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index"  >
+                    and  sharepath like  concat('%',#{item.key},'=',#{item.value},'%')
+                </foreach>
+            </trim>
+
+            )a  group by key1,value
+
+
+        </if>-->
+
+        <if test="type==2 ">
+            select key1 `key` ,value ,count(1) pv,uniqExact(uu) uv from (
+            select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,uu,
+            visitParamExtractString(json,'k') key1,
+            visitParamExtractString(json,'v') value
+            from youngortest_all   s where tv ='event' and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and dt &gt;= #{beginDate}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramte ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+            )a  group by key1,value
+
+        </if>
+
+    </select>
+
+    <select id="getParamDeatil" resultType="com.etocrm.sdk.entity.campaign.DetailVO" parameterType="com.etocrm.sdk.entity.campaign.CampaignVO">
+        <if test="type==1">
+            select
+            assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,
+            visitParamExtractString(json,'k') key,
+            visitParamExtractString(json,'v') value,
+            uu,unionId,openId,time
+            from youngortest_all   s where pageshow=1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and dt &gt;= #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramq ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+
+        </if>
+        <if test="type==3">
+
+
+            select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,
+            uu,unionId,openId,time,
+            visitParamExtractString(json,'k') key1,
+            visitParamExtractString(json,'v') value
+            from youngortest_all   s where  pageshare =1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index"  >
+                    and  sharepath like  concat('%',#{item.key},'=',#{item.value},'%')
+                </foreach>
+            </trim>
+
+
+
+        </if>
+
+        <if test="type==2 ">
+            select
+            assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1,
+            arrayJoin(a1) json,time,
+            visitParamExtractString(json,'k') key1,
+            visitParamExtractString(json,'v') value,
+            uu,unionId,openId
+            from youngortest_all   s where tv ='event' and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            and dt &gt;= #{beginDate}
+            and visitpath =#{visitpath}
+            <trim suffixOverrides=",">
+                <foreach collection="visList" item="item" index="index" >
+                    and  visitParamExtractString(paramte ,#{item.key})=#{item.value}
+                </foreach>
+            </trim>
+
+        </if>
+
+    </select>
+
+
+    <select id="getP" resultType="com.etocrm.sdk.entity.campaign.ParamList" parameterType="com.etocrm.sdk.entity.campaign.CampaignVO">
+        select key,sum(pv),sum(uv)  from (
+        select
+        'product_name'
+        visitParamExtractRaw(paramte,'product_name') value,
+        count(1) pv,uniqExact(uu) uv
+        from sdk052701 where addtocart =1
+         group  by paramte
+        ) a group by  key
+
+
+
+    </select>
+
+    <select id="getCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.campaign.CampionTimeVO" >
+        select count(1) from  eto.sdk0524 sa  where `time` &lt;=#{endTime}
+        and `time` > #{beginTime}
+    </select>
+
+    <select id="getCamList" resultType="com.etocrm.sdk.entity.campaign.DetailVO" parameterType="com.etocrm.sdk.entity.campaign.CampionTimeVO" >
+        select time ,unionId ,openId ,uu  ,paramte  key  from  eto.sdk0524 sa
+         where `time` &lt;=#{endTime}
+        and `time` > #{beginTime}
+        order by  t
+        limit #{pageIndex}, #{pageSize}
+    </select>
+
+
+
+
+
+</mapper>

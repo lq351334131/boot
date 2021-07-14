@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.UserRetentionMapper">
+
+    <select id="getUserNewAddRetention" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.user.UserNewAddRepVO">
+        SELECT
+        toDate(#{beginDate}) AS curDate,
+        SUM(r[1]) AS count,
+        if(sum(r[2])=0,0,round(divide(sum(r[2]),sum(r[1])),2))AS oneLater,
+        if(sum(r[3])=0,0,round(divide(sum(r[3]),sum(r[1])),2))AS twoLater,
+        if(sum(r[4])=0,0,round(divide(sum(r[4]),sum(r[1])),2))AS threeLater,
+        if(sum(r[5])=0,0,round(divide(sum(r[5]),sum(r[1])),2))AS fourLater,
+        if(sum(r[6])=0,0,round(divide(sum(r[6]),sum(r[1])),2))AS fiveLater,
+        if(sum(r[7])=0,0,round(divide(sum(r[7]),sum(r[1])),2))AS sixLater,
+        if(sum(r[8])=0,0,round(divide(sum(r[8]),sum(r[1])),2))AS sevenLater,
+        if(sum(r[9])=0,0,round(divide(sum(r[9]),sum(r[1])),2))AS fourteenLater,
+        if(sum(r[10])=0,0,round(divide(sum(r[10]),sum(r[1])),2))AS thirtyLater
+
+        FROM
+        --找到2019-08-01活跃用户在第2、3、6、13、29日的登录情况，1/0 => 登录/未登录
+        (
+        WITH toDate(#{beginDate}) AS tt
+        SELECT
+        uu,
+        retention(
+        toDate(dt) = tt ,
+        toDate(subtractDays(toDate(dt), 1)) = tt,
+        toDate(subtractDays(toDate(dt), 2)) = tt,
+        toDate(subtractDays(toDate(dt), 3)) = tt,
+        toDate(subtractDays(toDate(dt), 4)) = tt,
+        toDate(subtractDays(toDate(dt), 5)) = tt,
+        toDate(subtractDays(toDate(dt), 6)) = tt,
+        toDate(subtractDays(toDate(dt), 7)) = tt,
+        toDate(subtractDays(toDate(dt), 13)) = tt,
+        toDate(subtractMonths(toDate(dt),1)) = tt
+        ) AS r
+        FROM (
+          select  s.uu  uu ,s.dt dt from
+            (select  uu,dt   from  youngor04_all  where appkey =#{appKey} and  dt &gt;=#{beginDate}  AND dt &lt; #{endDate}   group by uu,dt )s
+            global inner join (
+                 select uu,  min(dt) as dt1
+                 from  youngor04_all where  appkey =#{appKey}
+                and  dt &lt;=  #{endDate}
+                and appShow=1
+               group by uu
+            )  b on s.uu=b.uu
+            where  b.dt1 =#{beginDate}
+         ) u
+         group by uu
+
+        )
+    </select>
+
+    <!--活跃留存-->
+    <select id="getUserActiveDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.user.UserNewAddRepVO">
+        SELECT
+        toDate(#{beginDate}) AS curDate,
+        SUM(r[1]) AS count,
+        if(sum(r[2])=0,0,round(divide(sum(r[2]),sum(r[1])),2))AS oneLater,
+        if(sum(r[3])=0,0,round(divide(sum(r[3]),sum(r[1])),2))AS twoLater,
+        if(sum(r[4])=0,0,round(divide(sum(r[4]),sum(r[1])),2))AS threeLater,
+        if(sum(r[5])=0,0,round(divide(sum(r[5]),sum(r[1])),2))AS fourLater,
+        if(sum(r[6])=0,0,round(divide(sum(r[6]),sum(r[1])),2))AS fiveLater,
+        if(sum(r[7])=0,0,round(divide(sum(r[7]),sum(r[1])),2))AS sixLater,
+        if(sum(r[8])=0,0,round(divide(sum(r[8]),sum(r[1])),2))AS sevenLater,
+        if(sum(r[9])=0,0,round(divide(sum(r[9]),sum(r[1])),2))AS fourteenLater,
+        if(sum(r[10])=0,0,round(divide(sum(r[10]),sum(r[1])),2))AS thirtyLater
+
+        FROM
+        --找到2019-08-01活跃用户在第2、3、6、13、29日的登录情况，1/0 => 登录/未登录
+         (
+        WITH toDate(#{beginDate}) AS tt
+        SELECT
+        uu,
+        retention(
+        toDate(dt) = tt  ,
+        toDate(subtractDays(toDate(dt), 1)) = tt,
+        toDate(subtractDays(toDate(dt), 2)) = tt,
+        toDate(subtractDays(toDate(dt), 3)) = tt,
+        toDate(subtractDays(toDate(dt), 4)) = tt,
+        toDate(subtractDays(toDate(dt), 5)) = tt,
+        toDate(subtractDays(toDate(dt), 6)) = tt,
+        toDate(subtractDays(toDate(dt), 7)) = tt,
+        toDate(subtractDays(toDate(dt), 13)) = tt,
+        toDate(subtractMonths(toDate(dt),1)) = tt
+        ) AS r
+        --找出2019-08-01活跃用户在后续1～30日登录数据
+        FROM youngor04_all
+        WHERE   appkey =#{appKey} and  dt &gt;=#{beginDate}  AND dt &lt; #{endDate}
+        GROUP BY uu
+        )
+
+    </select>
+
+    <!--沉默回流用户：在过去30天内无访问，90天内有访问（流失期在30~90天内），且当天访问的用户。-->
+    <select id="getSilent"  parameterType="com.etocrm.sdk.entity.user.SlientLostVO" resultType="java.lang.Integer">
+        select
+        uniqExact(c.uu)
+        from
+        (
+        select
+        uu
+        from
+        youngor04_all sa
+        where
+        appkey=#{appKey}   and pageShow=1       and  dt &lt;= #{thirtyDay}
+        and dt  &gt; #{ninetyDay}
+        group by
+        uu ) a
+        left join (
+        select
+        uu
+        from
+        youngor04_all sa
+        where
+        appkey=#{appKey}   and pageShow=1        and dt &lt; #{beginDate}
+        and dt  &gt; #{thirtyDay}
+        group by
+        uu ) b on
+        a.uu = b.uu
+        left join (
+        select
+        uu
+        from
+        youngor04_all sa
+        where
+        appkey=#{appKey}      and pageShow=1     and dt = #{beginDate}
+        group by
+        uu ) c on
+        a.uu = c.uu
+        where
+        empty(b.uu)= 1
+        and empty(c.uu)= 0
+
+    </select>
+ <!--流流失回流用户：在过去90天内无访问，历史上有访问（流失期在90天以上），且当天访问的用户-->
+    <select id="getLost"  parameterType="com.etocrm.sdk.entity.user.SlientLostVO" resultType="java.lang.Integer">
+        select
+            uniqExact(c.uu)
+        from
+            (
+            select
+                uu
+            from
+                youngor04_all sa
+            where
+                appkey =#{appKey}
+                and pageShow = 1
+                and dt &lt;= #{ninetyDay}
+        group by
+        uu ) a
+        left join (
+            select
+                uu
+            from
+                youngor04_all sa
+            where
+                appkey =#{appKey}
+                and pageShow = 1
+                and dt &lt; #{beginDate}
+                and dt &gt; #{ninetyDay}
+          group by
+          uu ) b on
+            a.uu = b.uu
+        left join (
+            select
+              uu
+            from
+                youngor04_all
+            where
+                appkey =#{appKey}
+                and pageShow = 1
+                and dt = #{beginDate}
+            group by
+                uu ) c on
+            a.uu = c.uu
+        where
+            empty(b.uu)= 1
+            and empty(c.uu)= 0
+
+    </select>
+
+    <select id="getSilentUserPage"  parameterType="com.etocrm.sdk.entity.user.SlientLostVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select c.uu,c.unionId,c.uu,c.nickname from
+        (
+        select   uu  from   youngor04_all  sa  where  appkey=#{appKey} and pageShow=1 AND dt &lt;= #{thirtyDay}
+        AND dt &gt; #{ninetyDay} group by uu
+        )
+        a     global  left join
+        (
+        select   uu  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1 and dt &lt; #{beginDate}
+        　　AND  dt &gt; #{thirtyDay} group by uu
+        )  b on  a.uu=b.uu  global  left join
+        (
+        select   openId,unionId,uu,nickname  from   youngor04_all  sa  where appkey=#{appKey} and  dt= #{beginDate} and pageShow=1   group by openId,unionId,uu,nickname
+        )  c on a.uu=c.uu where empty( b.uu )=1 and empty(c.uu)=0
+        group by  c.openId,c.unionId,c.uu,c.nickname
+        limit  #{limit},#{pageSize}
+    </select>
+
+    <select id="getLostUserPage"  parameterType="com.etocrm.sdk.entity.user.SlientLostVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select c.openId,c.unionId,c.uu,c.nickname  from
+        (
+        select   uu  from   youngor04_all  sa  where  appkey=#{appKey}  AND dt &lt;= #{ninetyDay} and pageShow=1 group by uu
+
+        )
+        a     global  left join
+        (
+        select   uu  from   youngor04_all  sa  where appkey=#{appKey}  and dt &lt; #{beginDate} and pageShow=1
+        　　AND  dt &gt; #{ninetyDay} group by uu
+        )  b on  a.uu=b.uu  global  left join
+        (
+        select   openId,unionId,uu,nickname  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1 and  dt= #{beginDate}   group by openId,unionId,uu,nickname
+        )  c on a.uu=c.uu where empty( b.uu )=1 and empty(c.uu)=0
+        group by  c.openId,c.unionId,c.uu,c.nickname
+        limit  #{limit},#{pageSize}
+    </select>
+
+    <select id="getSilentUserExcel"  parameterType="com.etocrm.sdk.entity.user.UserLostTypeVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+       select c.openId,c.unionId,c.uu,c.nickname from
+        (
+        select   uu  from   youngor04_all  sa  where  appkey=#{appKey} and pageShow=1  AND dt &lt;= #{thirtyDay}
+        AND dt &gt; #{ninetyDay} group by uu
+        )
+        a     global  left join
+        (
+        select   uu  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1  and dt &lt; #{beginDate}
+        　　AND  dt &gt;= #{thirtyDay} group by uu
+        )  b on  a.uu=b.uu  global  left join
+        (
+        select   openId,unionId,uu,nickname  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1 and  dt= #{beginDate}   group by openId,unionId,uu,nickname
+        )  c on a.uu=c.uu where empty( b.uu )=1 and empty(c.uu)=0
+        group by  c.openId,c.unionId,c.uu,c.nickname
+    </select>
+
+    <select id="getLostUserPageExcel"  parameterType="com.etocrm.sdk.entity.user.UserLostTypeVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        select c.openId openId,c.unionId unionId,c.uu userId,c.nickname nickName from
+        (
+        select   uu  from   youngor04_all  sa  where  appkey=#{appKey} and pageShow=1  AND dt &lt;= #{ninetyDay} group by uu
+
+        )
+        a     global  left join
+        (
+        select   uu  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1 and dt &lt; #{beginDate}
+        　　AND  dt &gt;= #{ninetyDay} group by uu
+        )  b on  a.uu=b.uu  global  left join
+        (
+        select   openId,unionId,uu,nickname  from   youngor04_all  sa  where appkey=#{appKey} and pageShow=1 and  dt= #{beginDate}   group by openId,unionId,uu,nickname
+        )  c on a.uu=c.uu where empty( b.uu )=1 and empty(c.uu)=0
+        group by  c.openId,c.unionId,c.uu,c.nickname
+    </select>
+
+
+
+
+
+
+</mapper>

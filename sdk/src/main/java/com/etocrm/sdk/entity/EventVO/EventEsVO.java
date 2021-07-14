@@ -1,6 +1,5 @@
-package com.etocrm.sdk.entity.EventVO;
+package com.etocrm.sdk.entity.eventVO;
 
-import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.Data;
 import net.sf.oval.constraint.NotNull;
 

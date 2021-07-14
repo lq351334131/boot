@@ -1,7 +1,7 @@
 package com.etocrm.sdk.entity.VO;
 
 import lombok.Data;
-import lombok.NonNull;
+import net.sf.oval.constraint.NotNull;
 
 import java.util.List;
 
@@ -12,12 +12,12 @@ public class PageChannelEditVO {
 
     private String  id;
 
-    @NonNull
+    @NotNull
     private  String  name;
 
-    @NonNull
+    @NotNull
     private List<ChannelVO> list;
 
-    @NonNull
+    @NotNull
     private  String pathId;
 }

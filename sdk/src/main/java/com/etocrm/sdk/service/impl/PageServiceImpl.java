@@ -15,16 +15,19 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MatchQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
+import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import org.elasticsearch.search.aggregations.metrics.*;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,8 +74,8 @@ public class PageServiceImpl  implements PageService {
                 jsonArray.add(jsonObject);
             }
         }catch (Exception  e){
-                log.error(e.getMessage(), e);
-                return  Result.error(ResponseCode.ES_EXCEPTION);
+            log.error(e.getMessage(), e);
+            return  Result.error(ResponseCode.ES_EXCEPTION);
         }
         return  Result.success(jsonArray);
     }
@@ -124,7 +127,7 @@ public class PageServiceImpl  implements PageService {
         long endTime = vo.getEndDate().getTime();
         ;//TimeUtils.getstrDate(endDate).getTime();
         mustQuery.must(QueryBuilders.rangeQuery("t").gte(begTime).lte(endTime));
-        List<Map<String, Object>> pageVisitHabitFrequency = getPageVisitHabitFrequency(mustQuery);
+        List<PageDepthVO> pageVisitHabitFrequency = getPageVisitHabitFrequency(mustQuery);
         return  Result.success(pageVisitHabitFrequency);
     }
 
@@ -313,38 +316,8 @@ public class PageServiceImpl  implements PageService {
     @Override
     public Result getVisitPageList(VisitPageVO vo) {
         if(ovalUtils.validatorRequestParam(vo).size()>0)return Result.error(ResponseCode.PARAMETERS_NULL);
-        //页面管理--
-        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
-        if (StringUtils.isNotBlank(vo.getVisitPath())) {
-            mustQuery.must(QueryBuilders.matchQuery("visitPath.keyword", vo.getVisitPath()));
-        }
-        if (StringUtils.isNotBlank(vo.getModuleName())) {
-            mustQuery.must(QueryBuilders.matchQuery("moduleName.keyword", vo.getModuleName()));
-        }
-        if (vo.getPathTypeId()!=null) {
-            mustQuery.must(QueryBuilders.matchQuery("pathTypeId.keyword", vo.getPathTypeId()));
-        }
-        //字段值不为空
-        mustQuery.must(QueryBuilders.existsQuery("visitPath"));
-        mustQuery.must(QueryBuilders.existsQuery("moduleName"));
-        mustQuery.must(QueryBuilders.existsQuery("pathName"));
         PageUtils pageUtils = new PageUtils(vo.getPageSize(), vo.getPageIndex(), null);
-        JSONArray data = esUtil.getData(mustQuery, EsTable.PAGE, pageUtils);
-        List<VisitPageResVO> list = new ArrayList<>();
-        for (int i = 0; i < data.size(); i++) {
-            VisitPageResVO pageList = data.getObject(i, VisitPageResVO.class);
-            //受访页,取上报数据字段p,事件类型page.show
-            String visitPath = pageList.getVisitPath();
-            QueryBuilder queryBuilder = QueryBuilders.rangeQuery("t").gte(vo.getBeginDate()).lte(vo.getEndDate());
-            mustQuery.must(queryBuilder);
-            long visitNum = esUtil.count(EsTable.INDEX, mustQuery);
-            long personNum=esUtil.groupBy(EsTable.INDEX,"uu.keyword",mustQuery);
-
-            pageList.setVisitNum(visitNum);
-            pageList.setPersonNum(personNum);
-
-            list.add(pageList);
-        }
+        List<VisitPageResVO> list = getAccess(vo, pageUtils);
         Map<String, Object> result = new HashMap();
         result.put("totalNum", pageUtils.getTotalNum());
         result.put("count", pageUtils.getCount());
@@ -352,7 +325,214 @@ public class PageServiceImpl  implements PageService {
         return Result.success(result);
     }
 
-    private List<Map<String, Object>> getPageVisitHabitFrequency(QueryBuilder query) {
+    @Override
+    public Result getVisitModulePage(ModelVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0) return Result.error(ResponseCode.PARAMETERS_NULL);
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        mustQuery.must(QueryBuilders.matchQuery("moduleName.keyword",vo.getModuleName()));
+
+        List<Map<String,Object>> lists = groupVisitandName(EsTable.PAGE, mustQuery);
+        List<ModelEsVo> list=new ArrayList();
+        ModelEsVo modelEsVo=null;
+        //占比--类型pathTypeId=1数量
+        long sumNum=getPathType(vo);
+        for(Map<String,Object> m:lists){
+            modelEsVo=new ModelEsVo();
+            String visitPath = (String)m.get("visitPath");
+            String pathName = (String)m.get("pathName");
+            modelEsVo.setPathName(pathName);
+            modelEsVo.setVisitPath(visitPath);
+            //次数
+            long visNum=getVistNum(EsTable.INDEX,modelEsVo,vo);
+            modelEsVo.setVisitNum(visNum);
+            String rate ="0.00";
+            if(sumNum>0){
+                rate = DecimalFormatUtils.numberWithPrecision(visNum / sumNum);
+            }
+            modelEsVo.setRate(rate);
+            list.add(modelEsVo);
+        }
+
+        return Result.success(list);
+    }
+
+    @Override
+    public Result getVisitPage(PageAccessVo vo) {
+        if (ovalUtils.validatorRequestParam(vo).size()>0) return Result.error(ResponseCode.PARAMETERS_NULL);
+        long begTime =vo.getBeginDate().getTime();
+        long endTime = vo.getEndDate().getTime();
+        QueryBuilder queryBuilder = QueryBuilders.rangeQuery("t").gte(begTime).lte(endTime);
+        long visitNum = esUtil.count(EsTable.INDEX, queryBuilder);
+        if (visitNum < 0) return Result.error(ResponseCode.ES_EXCEPTION);
+        long personNum = esUtil.groupBy(EsTable.INDEX, "uu.keyword", queryBuilder);
+        MatchQueryBuilder matchQueryBuilder = QueryBuilders.matchQuery("m_exitpage", 1);
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        mustQuery.must(queryBuilder);
+        mustQuery.must(matchQueryBuilder);
+        long entryNum = esUtil.count(EsTable.INDEX, mustQuery);
+        if (entryNum < 0) return Result.error(ResponseCode.ES_EXCEPTION);
+        MatchQueryBuilder m_openapp = QueryBuilders.matchQuery("m_openapp", 1);
+        BoolQueryBuilder avgStopTimeQuery = QueryBuilders.boolQuery();
+        avgStopTimeQuery.must(queryBuilder);
+        avgStopTimeQuery.must(m_openapp);
+        long mppenapp = esUtil.count(EsTable.INDEX, avgStopTimeQuery);
+        if (mppenapp < 0) return Result.error(ResponseCode.ES_EXCEPTION);
+        long avgStopTime = esUtil.sum(EsTable.INDEX, "m_pagetime", avgStopTimeQuery);
+        if (avgStopTime < 0) return Result.error(ResponseCode.ES_EXCEPTION);
+        String time = "00:00:00";
+        if (mppenapp > 0) time = TimeUtils.getGapTime(avgStopTime / mppenapp);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("visitNum", visitNum);
+        jsonObject.put("personNum", personNum);
+        MatchQueryBuilder m_sharetime = QueryBuilders.matchQuery("m_sharetime", 1);
+        jsonObject.put("shareNum", esUtil.count(EsTable.INDEX,m_sharetime));
+        if(visitNum==0){
+            jsonObject.put("avgExitRate", "0.00");
+        }else{
+            jsonObject.put("avgExitRate", DecimalFormatUtils.numberWithPrecision(entryNum/visitNum));
+        }
+        jsonObject.put("avgStopTime", time);
+        return Result.success(jsonObject);
+    }
+
+    @Override
+    public List<VisitPageResVO> downLoadVisitPageList(VisitVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0)return Collections.emptyList();
+        VisitPageVO  visitPageVO=new VisitPageVO();
+        BeanUtils.copyProperties(vo,visitPageVO);
+        List<VisitPageResVO> access = getAccess(visitPageVO, null);
+        return access;
+    }
+
+    @Override
+    public List<HomePageExcel> downLoadHomePageList(HomePageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0)return Collections.emptyList();
+        List<HomePageExcel> homePage = getHomePage(vo, null);
+        return homePage;
+    }
+
+    @Override
+    public Result getHomePageList(VisitPageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0)return Result.error(ResponseCode.PARAMETERS_NULL);
+        PageUtils pageUtils = new PageUtils(vo.getPageSize(), vo.getPageIndex(), null);
+        HomePageVO homePageVO=new HomePageVO();
+        BeanUtils.copyProperties(vo,homePageVO);
+        List<HomePageExcel> homePage = getHomePage(homePageVO, pageUtils);
+        Map<String, Object> result = new HashMap();
+        result.put("totalNum", pageUtils.getTotalNum());
+        result.put("count", pageUtils.getCount());
+        result.put("data", homePage);
+        return Result.success(result);
+    }
+
+    @Override
+    public Result getPageVisitHabitDepth(PageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0) return  Result.error(ResponseCode.PARAMETERS_NULL);
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.must(QueryBuilders.rangeQuery("t").from(vo.getBeginDate().getTime()).to(vo.getEndDate().getTime()));
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("tv", "page")) ;
+        query.must(QueryBuilders.matchQuery("tl", "show")) ;
+        List<Map> depth = getDepth(query);
+        List<PageDepthVO> list = getPageDepthVO(depth);
+        return Result.success(list);
+    }
+
+    @Override
+    public List<PageDepthVO> downLoadPageVisitHabitDepth(PageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0) return  new ArrayList<PageDepthVO>();
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.must(QueryBuilders.rangeQuery("t").from(vo.getBeginDate().getTime()).to(vo.getEndDate().getTime()));
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("tv", "page")) ;
+        query.must(QueryBuilders.matchQuery("tl", "show")) ;
+        List<Map> depth = getDepth(query);
+        List<PageDepthVO> list = getPageDepthVO(depth);
+        return list;
+    }
+
+    @Override
+    public Result getPageVisitHabitTime(PageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0) return  Result.error(ResponseCode.PARAMETERS_NULL);
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.must(QueryBuilders.rangeQuery("t").from(vo.getBeginDate().getTime()).to(vo.getEndDate().getTime()));
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("m_openapp", 1));
+        Long num= esUtil.groupBy(EsTable.INDEX, "o.keyword", query);
+        List<String> pageTime = PageTime.getPageTime();
+        List<PageDepthVO> result = getTime(query, pageTime, num);
+        return Result.success(result);
+    }
+
+    @Override
+    public List<PageDepthVO> downLoadPageVisitHabitTime(PageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0) return new ArrayList<PageDepthVO>();
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.must(QueryBuilders.rangeQuery("t").from(vo.getBeginDate().getTime()).to(vo.getEndDate().getTime()));
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("appKey", vo.getAppKey())) ;
+        query.must(QueryBuilders.matchQuery("m_openapp", 1));
+        Long num= esUtil.groupBy(EsTable.INDEX, "o", query);
+        List<String> pageTime = PageTime.getPageTime();
+        List<PageDepthVO> result = getTime(query, pageTime, num);
+        return result;
+    }
+
+    @Override
+    public List<PageDepthVO> downLoadPageVisitHabitFrequency(PageVO vo) {
+        List<ConstraintViolation> constraintViolations = ovalUtils.validatorRequestParam(vo);
+        if (constraintViolations.size() > 0) return new ArrayList<PageDepthVO>();
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        MatchQueryBuilder eventNameBuilder = QueryBuilders.matchQuery("tl.keyword", "show");
+        mustQuery.must(eventNameBuilder);
+        mustQuery.must(QueryBuilders.matchQuery("k.keyword", vo.getAppKey()));
+        MatchQueryBuilder tvNameBuilder = QueryBuilders.matchQuery("tv.keyword", "page");
+        mustQuery.must(tvNameBuilder);
+        long begTime = vo.getBeginDate().getTime();
+        long endTime = vo.getEndDate().getTime();
+        ;//TimeUtils.getstrDate(endDate).getTime();
+        mustQuery.must(QueryBuilders.rangeQuery("t").gte(begTime).lte(endTime));
+        List<PageDepthVO> pageVisitHabitFrequency = getPageVisitHabitFrequency(mustQuery);
+        return pageVisitHabitFrequency;
+    }
+
+    @Override
+    public Result getPagesPathFirst(PageVO vo) {
+        if(ovalUtils.validatorRequestParam(vo).size()>0)return Result.error(ResponseCode.PARAMETERS_NULL);
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        MatchQueryBuilder depathBuilder = QueryBuilders.matchQuery("m_depth", 1);
+        mustQuery.must(depathBuilder);
+        mustQuery.must(QueryBuilders.matchQuery("k.keyword", vo.getAppKey()));
+        long begTime = vo.getBeginDate().getTime();
+        long endTime = vo.getEndDate().getTime();
+        mustQuery.must(QueryBuilders.rangeQuery("t").gte(begTime).lte(endTime));
+        List<Map<String, Object>> lists = esUtil.groupByMap(EsTable.INDEX, "p.keyword", mustQuery, Integer.MAX_VALUE);
+        List<PagesPathFirstRepVO> list=new ArrayList<>();
+        PagesPathFirstRepVO bean=null;
+        for (Map<String, Object> map : lists) {
+            bean=new PagesPathFirstRepVO();
+            String p = (String) map.get("key");
+            BoolQueryBuilder pagemustQuery = QueryBuilders.boolQuery();
+            pagemustQuery.must(QueryBuilders.matchQuery("visitPath.keyword", p));
+            JSONArray pageData = esUtil.getData(pagemustQuery, EsTable.PAGE, null);
+            if(pageData.size()>0){
+                bean.setPageId( pageData.getJSONObject(0).getString("id"));
+                bean.setName( pageData.getJSONObject(0).getString("pathName"));
+                bean.setDepth(1);
+                list.add(bean);
+            }
+        }
+        return Result.success(list);
+    }
+
+    @Override
+    public Result getPagePathNode(PageNodeVO vo) {
+        return null;
+    }
+
+
+    private List<PageDepthVO> getPageVisitHabitFrequency(QueryBuilder query) {
         SearchResponse response = null;
         Map<String, Long> countResult = new HashMap<>();
         try {
@@ -388,7 +568,7 @@ public class PageServiceImpl  implements PageService {
 
             });
 
-            List<Map<String, Object>> frequency = getFrequency(userNum, total);
+            List<PageDepthVO> frequency = getFrequency(userNum, total);
             return frequency;
         } catch (IOException e) {
             log.error("{}", e);
@@ -396,9 +576,9 @@ public class PageServiceImpl  implements PageService {
         }
     }
 
-    private List<Map<String, Object>> getFrequency(Map<Long, Long> userNum, int total) {
+    private List<PageDepthVO> getFrequency(Map<Long, Long> userNum, int total) {
         int lastNum = 0;
-        List<Map<String, Object>> list = new ArrayList<>();
+        List<PageDepthVO> list = new ArrayList<>();
         for (Map.Entry<Long, Long> m : userNum.entrySet()) {
             //key-userNum
             //value-num
@@ -406,12 +586,13 @@ public class PageServiceImpl  implements PageService {
             Long value = m.getValue();
             if (key < 10) {
                 //10次及10次以下的数据
-                Map<String, Object> map = new HashMap<>();
-                map.put("keyName", key + "次");
-                map.put("num", value);
+                PageDepthVO pageDepthVO = new PageDepthVO();
+                pageDepthVO.setKeyName( key + "次");
+                pageDepthVO.setNum(value.intValue());
                 String percent = getPercent(value.intValue(), total);
-                map.put("rate", total == 0 ? "0.00%" : percent + "%");
-                list.add(map);
+                String rate=total == 0 ? "0.00%" : percent + "%";
+                pageDepthVO.setRate(rate);
+                list.add(pageDepthVO);
 
             } else {
                 int i = value.intValue();
@@ -420,12 +601,13 @@ public class PageServiceImpl  implements PageService {
         }
 
         if (lastNum > 0) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("keyName", "10次以上");
-            map.put("num", lastNum);
+            PageDepthVO pageDepthVO = new PageDepthVO();
+            pageDepthVO.setKeyName( "10次以上");
+            pageDepthVO.setNum(lastNum);
             String percent = getPercent(lastNum, total);
-            map.put("rate", total == 0 ? "0.00%" : percent + "%");
-            list.add(map);
+            String rate=total == 0 ? "0.00%" : percent + "%";
+            pageDepthVO.setRate(rate);
+            list.add(pageDepthVO);
         }
         return list;
     }
@@ -435,6 +617,9 @@ public class PageServiceImpl  implements PageService {
         NumberFormat numberFormat = NumberFormat.getInstance();
         // 设置精确到小数点后2位
         numberFormat.setMaximumFractionDigits(2);
+        if(num1==0||num2==0){
+           return  "0.00";
+        }
         String result = numberFormat.format((float) num1 / (float) num2 * 100);
         return result;
     }
@@ -491,8 +676,352 @@ public class PageServiceImpl  implements PageService {
                 countResult.put(openid, num + 1L);
             }
         });
+    }
 
+    /**
+     * @Description 退出率，次时长、次时长求和
+     * @author xing.liu
+     * @date 2020/9/16
+     **/
+    private void  sumPage(VisitPageResVO vo,QueryBuilder queryBuilder){
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(queryBuilder);
+        searchSourceBuilder.size(0);
+        SumAggregationBuilder mexitpage = AggregationBuilders.sum("sumexitpage").field("m_exitpage");
+        searchSourceBuilder.aggregation(mexitpage);
+        SumAggregationBuilder msharetime = AggregationBuilders.sum("sumsharetime").field("m_sharetime");
+        searchSourceBuilder.aggregation(msharetime);
+        SumAggregationBuilder mapptime = AggregationBuilders.sum("sumStop").field("m_apptime");
+        searchSourceBuilder.aggregation(mapptime);
+        SearchRequest searchRequest = new SearchRequest();
+        // 设置request要搜索的索引和类型
+        searchRequest.indices(EsTable.INDEX);
+        // 设置SearchSourceBuilder查询属性
+        searchRequest.source(searchSourceBuilder);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            Aggregations aggregations = searchResponse.getAggregations();
+            Sum sumexitpage = aggregations.get("sumexitpage");
+            Sum sumStop = aggregations.get("sumStop");
+            Sum  sumsharetime=aggregations.get("sumsharetime");
+            long sumExitLong =new Double(sumexitpage.getValue()).longValue();
+            long sumStopLong=new Double(sumStop.getValue()).longValue();
+            long sumShareLong=new Double(sumsharetime.getValue()).longValue();
+            vo.setShareNum(sumShareLong);
+            if(vo.getVisitNum()==0){
+                vo.setAvgExitRate("0");
+            }else{
+                String avgRate = DecimalFormatUtils.numberWithPrecision(sumExitLong/vo.getVisitNum());
+                vo.setAvgExitRate(avgRate);
+            }
+            String stopRate = TimeUtils.getGapTime(sumStopLong);
+            vo.setAvgStopTime(stopRate);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+    /**
+     *
+     * @Description  groupby  visitPath,pathName
+     * @author xing.liu
+     * @date 2020/9/17
+     **/
+    private   List<Map<String,Object>>   groupVisitandName(String index,QueryBuilder queryBuilder){
+        List<Map<String,Object>> result=new ArrayList<>();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //searchSourceBuilder.size(0);
+        searchSourceBuilder.query(queryBuilder);
+        TermsAggregationBuilder aggregation = AggregationBuilders.terms("groubyVp")
+                .script(new Script("doc['visitPath.keyword'] +'#'+doc['pathName.keyword']"));
+        searchSourceBuilder.aggregation(aggregation);
+        // TermsAggregationBuilder tlBuilder = AggregationBuilders.terms("tlgroupy").field("tl.keyword");
+        SearchRequest searchRequest = new SearchRequest();
+        // 设置request要搜索的索引和类型
+        searchRequest.indices(index);
+        // 设置SearchSourceBuilder查询属性
+        searchRequest.source(searchSourceBuilder);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            Aggregations aggregations = searchResponse.getAggregations();
+            Terms tvgroupy = aggregations.get("groubyVp");
+            for(Terms.Bucket buck : tvgroupy.getBuckets()) {
+                Map map = new HashMap();
+                String[] arr = buck.getKeyAsString().split("#");
+                map.put("visitPath", arr[0].replace("[", "").replace("]", ""));
+                long docCount = buck.getDocCount();
+                map.put("pathName",arr[1].replace("[", "").replace("]", ""));
+                result.add(map);
+            }
+            return result;
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+
+    private long getVistNum(String index, ModelEsVo vo,ModelVO modelVO) {
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        mustQuery.must(QueryBuilders.matchQuery("p.keyword",vo.getVisitPath()));
+        RangeQueryBuilder timeBuilder = QueryBuilders.rangeQuery("t").gte(modelVO.getBeginDate().getTime()).lte(modelVO.getEndDate().getTime());
+        mustQuery.must(timeBuilder);
+        long visNum= esUtil.count(index,mustQuery);
+        return visNum;
+    }
+
+    /**
+     * @Description 求pathTypeId=1,上报p字段总数
+     * @author xing.liu
+     * @date 2020/9/17
+     **/
+    private   long  getPathType(ModelVO vo){
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        mustQuery.must(QueryBuilders.matchQuery("pathTypeId",1));
+        RangeQueryBuilder timeBuilder = QueryBuilders.rangeQuery("t").gte(vo.getBeginDate()).lte(vo.getEndDate());
+        mustQuery.must(timeBuilder);
+        JSONArray data = esUtil.getData(mustQuery, EsTable.PAGE, null);
+        long sumNum=0;
+        for (int i = 0; i < data.size(); i++) {
+            String visitPath = data.getJSONObject(i).getString("visitPath");
+            if(StringUtils.isBlank(visitPath)) continue;
+            BoolQueryBuilder visitPathB = QueryBuilders.boolQuery();
+            visitPathB.must(QueryBuilders.matchQuery("p.keyword",visitPath));
+            RangeQueryBuilder visitPathRanger = QueryBuilders.rangeQuery("t").gte(vo.getBeginDate()).lte(vo.getEndDate());
+            visitPathB.must(visitPathRanger);
+            long count = esUtil.count(EsTable.INDEX, visitPathB);
+            sumNum+=count;
+        }
+        return  sumNum;
 
     }
+
+    private List<HomePageExcel> getHomePage(HomePageVO vo,PageUtils pageUtils){
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        if (StringUtils.isNotBlank(vo.getVisitPath())) {
+            mustQuery.must(QueryBuilders.matchQuery("visitPath.keyword", vo.getVisitPath()));
+        }
+        if (StringUtils.isNotBlank(vo.getModuleName())) {
+            mustQuery.must(QueryBuilders.matchQuery("moduleName.keyword", vo.getModuleName()));
+        }
+        if (vo.getPathTypeId()!=null) {
+            mustQuery.must(QueryBuilders.matchQuery("pathTypeId.keyword", vo.getPathTypeId()));
+        }
+        JSONArray data = esUtil.getData(mustQuery, EsTable.PAGE, pageUtils);
+        List<HomePageExcel> list = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            HomePageExcel homePageExcel = data.getObject(i, HomePageExcel.class);
+            //入口页就是当前周期的第一个页面（page.onshow)，m_entrypage=1
+            String visitPath = homePageExcel.getVisitPath();
+            QueryBuilder queryBuilder = QueryBuilders.rangeQuery("t").gte(vo.getBeginDate().getTime()).lte(vo.getEndDate().getTime());
+            mustQuery.must(queryBuilder);
+            mustQuery.must(QueryBuilders.matchQuery("p.keyword",visitPath));
+            mustQuery.must(QueryBuilders.matchQuery("m_entrypage",1));
+            long visitNum = esUtil.count(EsTable.INDEX, mustQuery);
+            long personNum=esUtil.groupBy(EsTable.INDEX,"uu.keyword",mustQuery);
+            homePageExcel.setVisitNum(visitNum);
+            homePageExcel.setPersonNum(personNum);
+            getHome(homePageExcel,queryBuilder);
+            list.add(homePageExcel);
+        }
+        return list;
+    }
+
+    /**
+     * 
+     * @Description 
+     * @author xing.liu
+     * @date 2020/9/18
+     **/
+    private void  getHome(HomePageExcel vo,QueryBuilder queryBuilder){
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+            searchSourceBuilder.query(queryBuilder);
+            searchSourceBuilder.size(0);
+            SumAggregationBuilder mentrypage = AggregationBuilders.sum("sumentrypage").field("m_entrypage");
+            searchSourceBuilder.aggregation(mentrypage);
+            SumAggregationBuilder mapptime = AggregationBuilders.sum("sumStop").field("m_apptime");
+            searchSourceBuilder.aggregation(mapptime);
+            SearchRequest searchRequest = new SearchRequest();
+            // 设置request要搜索的索引和类型
+            searchRequest.indices(EsTable.INDEX);
+            // 设置SearchSourceBuilder查询属性
+            searchRequest.source(searchSourceBuilder);
+            try {
+                SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+                Aggregations aggregations = searchResponse.getAggregations();
+                Sum sumentrypage = aggregations.get("sumentrypage");
+                Sum sumStop = aggregations.get("sumStop");
+                long sumEntryLong =new Double(sumentrypage.getValue()).longValue();
+                vo.setEntryNum(sumEntryLong);
+                long sumStopLong=new Double(sumStop.getValue()).longValue();
+                String stopRate = TimeUtils.getGapTime(sumStopLong);
+                vo.setAvgStopTime(stopRate);
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
+            }
+    }
+
+    private List<VisitPageResVO> getAccess(VisitPageVO vo,PageUtils  pageUtils){
+        //页面管理--
+        BoolQueryBuilder mustQuery = QueryBuilders.boolQuery();
+        if (StringUtils.isNotBlank(vo.getVisitPath())) {
+            mustQuery.must(QueryBuilders.matchQuery("visitPath.keyword", vo.getVisitPath()));
+        }
+        if (StringUtils.isNotBlank(vo.getModuleName())) {
+            mustQuery.must(QueryBuilders.matchQuery("moduleName.keyword", vo.getModuleName()));
+        }
+        if (vo.getPathTypeId()!=null) {
+            mustQuery.must(QueryBuilders.matchQuery("pathTypeId.keyword", vo.getPathTypeId()));
+        }
+        JSONArray data = esUtil.getData(mustQuery, EsTable.PAGE, pageUtils);
+        List<VisitPageResVO> list = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            VisitPageResVO pageList = data.getObject(i, VisitPageResVO.class);
+            //受访页,取上报数据字段p
+            String visitPath = pageList.getVisitPath();
+            QueryBuilder queryBuilder = QueryBuilders.rangeQuery("t").gte(vo.getBeginDate().getTime()).lte(vo.getEndDate().getTime());
+            mustQuery.must(queryBuilder);
+            mustQuery.must(QueryBuilders.matchQuery("p.keyword",visitPath));
+            long visitNum = esUtil.count(EsTable.INDEX, mustQuery);
+            long personNum=esUtil.groupBy(EsTable.INDEX,"uu.keyword",mustQuery);
+            pageList.setVisitNum(visitNum);
+            pageList.setPersonNum(personNum);
+            sumPage(pageList,mustQuery);
+            list.add(pageList);
+        }
+        return list;
+    }
+
+    private List<Map>  getDepth(QueryBuilder  queryBuilder){
+        List<Map> result=new ArrayList<>();
+        try {
+            // 1、创建search请求
+            SearchRequest searchRequest = new SearchRequest(EsTable.INDEX);
+            // 2、用SearchSourceBuilder来构造查询请求体 ,请仔细查看它的方法，构造各种查询的方法都在这。
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+            sourceBuilder.query(queryBuilder);
+            sourceBuilder.size(0);
+            //加入聚合
+            //字段值项分组聚合
+            TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_fngroup")
+                    .script(new Script("doc['b.keyword'] +'#'+doc['o.keyword']"))
+                    //.field("fngroup.keyword")
+                    .size(Integer.MAX_VALUE)
+                    .order(BucketOrder.aggregation("count", true));
+            aggregation.subAggregation(AggregationBuilders.cardinality("count")
+                    .field("p.keyword"));
+            sourceBuilder.aggregation(aggregation);
+            searchRequest.source(sourceBuilder);
+            log.info(sourceBuilder.toString());
+            SearchResponse searchResponse = client.search(searchRequest,RequestOptions.DEFAULT);
+
+            //4、处理响应
+            //搜索结果状态信息
+            if(RestStatus.OK.equals(searchResponse.status())) {
+                // 获取聚合结果
+                Aggregations aggregations = searchResponse.getAggregations();
+                Terms byAgeAggregation = aggregations.get("by_fngroup");
+                for(Terms.Bucket buck : byAgeAggregation.getBuckets()) {
+                    Map map=new HashMap();
+                    String[] arr= buck.getKeyAsString().split("#");
+                    map.put("b",arr[0].replace("[","").replace("]",""));
+                    map.put("o",arr[1].replace("[","").replace("]",""));
+                    //取子聚合
+                    ParsedCardinality count = buck.getAggregations().get("count");
+                    long value = count.getValue();
+                    map.put("count",value);
+                    result.add(map);
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            log.error("{}",e.getMessage());
+            return Collections.emptyList();
+        }
+        return  result;
+    }
+
+    private  List<PageDepthVO> getPageDepthVO(List<Map>depth){
+        Map<Long,Map>map=new TreeMap<>();
+        //count(distinct openid)Num  group count
+        for(Map m:depth){
+            Map dis=new HashMap();
+            Long count=(Long)m.get("count");
+            String open= (String)m.get("o");
+            if(map.get(count)==null){
+                dis.put(open,1);
+                map.put(count,dis);
+            }else{
+                dis.put(open,1);
+                Map map1 = map.get(count);
+                map1.putAll(dis);
+            }
+        }
+        //获取小程序周期总数
+        Long sum=0L;
+        for(Map.Entry<Long, Map> entry: map.entrySet()) {
+            int size = entry.getValue().size();
+            sum+=size;
+        }
+        List<PageDepthVO> result=new ArrayList<>();
+        for(Map.Entry<Long, Map> entry: map.entrySet()) {
+            int size = entry.getValue().size();
+            String   keyName=entry.getKey()+"次";
+            PageDepthVO pageDepthVO=new PageDepthVO();
+            pageDepthVO.setKeyName(keyName);
+            pageDepthVO.setNum(size);
+            pageDepthVO.setRate(getPercent(size,sum.intValue())+"%");
+            result.add(pageDepthVO);
+        }
+        return  result;
+    }
+
+    private  List<PageDepthVO> getTime(BoolQueryBuilder query,List<String>pageTime,Long num){
+        List<PageDepthVO> result=new ArrayList<>();
+        PageDepthVO pageDepthVO=null;
+        for(String s:pageTime){
+            pageDepthVO=new PageDepthVO();
+            pageDepthVO.setKeyName(s);
+            if(s.contains(PageTime.twentys)){
+                query.must(QueryBuilders.rangeQuery("m_apptime").lte(20*1000));
+            }else if(s.contains(PageTime.sixtys)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(20*1000).lte(60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.two)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(1*60*1000).lte(2*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.five)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(2*60*1000).lte(5*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.twenty)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(10*60*1000).lte(20*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.thirty)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(20*60*1000).lte(30*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.forty)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(30*60*1000).lte(40*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.sixty)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(40*60*1000).lte(60*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.oh)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(1*60*60*1000).lte(2*60*60*1000);
+                query.must(queryBuilder);
+            }else if(s.contains(PageTime.th)){
+                QueryBuilder queryBuilder = QueryBuilders.rangeQuery("m_apptime").gte(2*60*60*1000);
+                query.must(queryBuilder);
+            }
+            Long  userNum= esUtil.groupBy(EsTable.INDEX, "o.keyword", query);
+            if(userNum>0 && num>0) {
+                pageDepthVO.setNum(userNum.intValue());
+                pageDepthVO.setRate(getPercent(userNum.intValue(), num.intValue()) + "%");
+                result.add(pageDepthVO);
+            }
+        }
+        return  result;
+    }
+
+
 
 }

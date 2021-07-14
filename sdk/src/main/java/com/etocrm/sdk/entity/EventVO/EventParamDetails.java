@@ -1,4 +1,4 @@
-package com.etocrm.sdk.entity.EventVO;
+package com.etocrm.sdk.entity.eventVO;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;

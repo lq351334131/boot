@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.DataApiMapper">
+
+    <select id="getVisit" resultType="com.etocrm.sdk.entity.dataapi.DataApiReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+        select  appkey appKey, visitPath , count(uu)pv ,uniqExact(uu) uv from youngor04_all sa
+         where pageShow =1
+        and `time` &lt;=#{time}
+        group by appkey, visitPath
+    </select>
+
+    <select id="getTotal" resultType="com.etocrm.sdk.entity.dataapi.TotalReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  appkey appKey,  count(uu)pv ,uniqExact(uu) uv from youngor04_all sa
+         where pageShow =1
+          and `time` &lt;=#{time}
+        group by appkey
+    </select>
+
+
+    <select id="getEveryday" resultType="com.etocrm.sdk.entity.dataapi.EverydayReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  dt, appkey appKey,  count(uu)pv ,uniqExact(uu) uv from youngor04_all sa
+         where pageShow =1
+          and `time` &lt;=#{time}
+        group by dt,appkey
+    </select>
+
+    <select id="getReg" resultType="com.etocrm.sdk.entity.dataapi.RegReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+             select  a.appkey appKey, b.province province ,count(1) pv ,uniqExact(uu) uv  from youngor04_all a
+
+             global left join ( select province,reqIp ,appkey ,uu from  ip where  province!='[]'  )
+            b   on a.reqIp=b.reqIp  where  a.uu=b.uu and a.appkey=b.appkey
+            and a.`time` &lt;=#{time}
+
+           group by  a.appkey,b.province
+    </select>
+
+    <select id="getScene" resultType="com.etocrm.sdk.entity.dataapi.SceneReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+        select  appkey appKey, scene ,count(uu) pv ,uniqExact(uu) uv from  youngor04_all
+         where   `time` &lt;=#{time}
+         group by  scene,appkey
+    </select>
+
+    <select id="getQrCode" resultType="com.etocrm.sdk.entity.dataapi.SceneReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+      select  appkey appKey, scene ,count(uu) pv ,uniqExact(uu) uv from  youngor04_all
+         where   `time` &lt;=#{time} and scene in  (1011,1012,1013)
+         group by  scene,appkey
+
+    </select>
+    <select id="getEvent" resultType="com.etocrm.sdk.entity.dataapi.EventReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+           select  appkey appKey, tl ,count(uu) pv ,uniqExact(uu) uv from  youngor04_all
+         where   `time` &lt;=#{time} and tv='event'
+         group by  tl,appkey
+    </select>
+
+    <select id="getShop" resultType="com.etocrm.sdk.entity.dataapi.OnlineReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+           select  appkey appKey,
+         visitParamExtractString(paramTe ,'shop_id') name,
+         count(uu) pv ,uniqExact(uu) uv
+       from
+       youngor04_all
+         where   getShop =1 and  `time` &lt;=#{time}
+         group by appkey,name
+    </select>
+
+    <select id="getSearch" resultType="com.etocrm.sdk.entity.dataapi.OnlineReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+           select  appkey appKey,
+         visitParamExtractString(paramte ,'keyword') name,
+         count(uu) pv ,uniqExact(uu) uv
+       from
+       youngor04_all
+         where  `search` =1 and  `time` &lt;=#{time}
+         group by appkey,name
+    </select>
+    <select id="getShare" resultType="com.etocrm.sdk.entity.dataapi.DataApiReqVO">
+        select  appkey appKey, visitpath , count(uu)pv ,uniqExact(uu) uv from youngor04_all sa
+         where pageshare =1
+        and `time` &lt;=#{time}
+        group by appkey, visitPath
+    </select>
+
+    <select id="getShareTotal" resultType="com.etocrm.sdk.entity.dataapi.TotalReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  appkey appKey,  count(uu)pv ,uniqExact(uu) uv from youngor04_all sa
+         where pageshare =1
+          and `time` &lt;=#{time}
+        group by appkey
+    </select>
+
+    <select id="getEntryTotal" resultType="com.etocrm.sdk.entity.dataapi.EntryReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  appkey appKey,  count(path) entryNum from youngor04_all sa
+         where appShow=1 and  entryPage =1
+          and `time` &lt;=#{time}
+        group by appkey
+    </select>
+
+    <select id="getEntryVisTotal" resultType="com.etocrm.sdk.entity.dataapi.EntryReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  appkey appKey,  count(path) pv, uniqExact(uu) uv from youngor04_all sa
+         where pageShow=1 and  notEmpty(path)
+          and `time` &lt;=#{time}
+         group by appkey
+    </select>
+
+
+    <select id="getOpenTotal" resultType="com.etocrm.sdk.entity.dataapi.OpenReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select  appkey appKey,  uniqExact(back) openNum from youngor04_all sa
+         where `time` &lt;=#{time}
+        group by appkey
+    </select>
+
+    <select id="getOpenDetail" resultType="com.etocrm.sdk.entity.dataapi.OpenDetailReqVO" parameterType="com.etocrm.sdk.entity.dataapi.DataApiVO">
+         select back,count(1)pv ,uniqExact(uu) uv from   youngor04_all sa
+         where `time` &lt;=#{time}
+        group  by  back
+    </select>
+
+
+
+
+
+
+
+
+
+
+
+</mapper>

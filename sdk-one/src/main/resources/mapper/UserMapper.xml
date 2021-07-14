@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.UserMapper">
+    <select id="getUserImg"   resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        <if test="groupName=='city' or groupName=='province' ">
+            select ${groupName}   from
+            (
+
+            select s.appkey  ,s.dt,s1.city city  ,s1.province  province   from  youngor04_all s  global  inner join
+            (
+            select  reqIp,province ,city   from   ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by   reqIp,province ,city
+            ) s1 on  s.reqIp=s1.reqIp
+            )  a
+            where appkey =#{appKey} and notEmpty(${groupName})  and ${groupName}!='[]'
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by ${groupName}
+        </if>
+
+        <if test="groupName=='brand' or groupName=='platForm' ">
+            select ${groupName}   from youngor04_all a
+            where appkey =#{appKey} and notEmpty(${groupName})
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by ${groupName}
+        </if>
+
+    </select>
+
+    <select id="getUserImgNewUser"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        <if test="groupName=='brand' or groupName=='platForm' ">
+            <!--select ${groupName} ,uniqExact(uu) num  from (
+            select s.uu,s.brand  ,s.platform   from  (
+            select  s.uu ,s.brand ,platform
+            from youngor04_all s  where  appshow=1  and appkey =#{appKey}
+            <if test="endDate!=null">
+                and  dt &lt;=  #{endDate}
+            </if>
+            <if test="beginDate!=null">
+                and  dt &gt;=  #{beginDate}
+            </if>
+            group by s.uu ,s.platform,s.brand
+            )  s
+            inner  join (
+            select uu,  min(dt) as dt         from (
+            select uu,appkey,         dt
+            from youngor04_all where appshow =1  and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            ORDER BY t asc         ) a
+            group by uu
+            ) s2 on  s.uu=s2.uu
+            where   s2. dt &gt;=  #{beginDate}
+            ) g
+            group by ${groupName}-->
+            select ${groupName},count(uu) num from(
+            SELECT uu,dt,brand ,platForm FROM youngor04_all s2  where appShow =1
+            and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            ORDER BY t  LIMIT 1 BY uu
+            ) a  where  a.dt >= #{beginDate} group by ${groupName}
+
+        </if>
+        <if test="groupName=='city' or groupName=='province' ">
+            select ${groupName} ,uniqExact(uu) num from (
+            select s.uu,s1.city city ,s1.province  province,s.uu uu    from  (
+            select  s.uu ,s.reqIp
+            from youngor04_all s  where  appShow=1  and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by s.uu ,s.reqIp
+
+            )  s  global  inner join
+            (
+            select  reqIp,city,province  from  ip1
+               where  dt &lt;=  #{endDate}
+                and  dt &gt;=  #{beginDate}
+               group by reqIp,city,province
+
+            ) s1 on  s.reqIp=s1.reqIp
+            inner  join (
+            select uu,  min(dt) as dt         from (
+            select uu,appkey,         dt
+            from youngor04_all where appShow =1 and appkey =#{appKey}
+            and dt &lt;= #{endDate}
+            ORDER BY t asc         ) a
+            group by uu
+            ) s2 on  s.uu=s2.uu
+            where   s2.dt>= #{beginDate}
+            ) g
+            group by ${groupName}
+        </if>
+    </select>
+
+    <select id="getUserImgVisoUser"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        <if test="groupName=='city' or groupName=='province' ">
+            select ${groupName}, count( visitPath) visNum , uniqExact(uu) useNum
+            from  (
+            select s.appkey  ,s.dt,s1.city city  ,s1.province  province,s.visitPath,s.uu   from  youngor04_all s  global  left join
+            (
+            select  reqIp,city,province  from  ip1
+               where   dt &lt;=  #{endDate}
+               and  dt &gt;=  #{beginDate}
+               group by reqIp,city,province
+
+            ) s1 on  s.reqIp=s1.reqIp where s.pageShow=1
+            )  a
+            where   notEmpty(${groupName})
+            and appkey =#{appKey}
+            <if test="endDate!=null">
+                and  dt &lt;=  #{endDate}
+            </if>
+            <if test="beginDate!=null">
+                and  dt &gt;=  #{beginDate}
+            </if>
+            group by ${groupName}
+        </if>
+        <if test="groupName=='brand' or groupName=='platForm' ">
+            select ${groupName}, count( visitPath) visNum , uniqExact(uu) useNum
+            from youngor04_all
+            where   notEmpty(${groupName})
+            and appkey =#{appKey}
+            <if test="endDate!=null">
+                and  dt &lt;=  #{endDate}
+            </if>
+            <if test="beginDate!=null">
+                and  dt &gt;=  #{beginDate}
+            </if>
+            group by ${groupName}
+        </if>
+    </select>
+    <select id="getUserImgExit"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        <if test="groupName=='city' or groupName=='province' ">
+            select ${groupName}, count(1) num  from
+            (
+            select  s.back ,s1.city city  ,s1.province  province   from  youngor04_all s  global  left join
+            (
+            select  reqIp,city,province  from  ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+               group by reqIp,city,province
+            ) s1 on  s.reqIp=s1.reqIp  where   s.pageShow=1
+            and appkey=#{appKey}  and notEmpty(${groupName})
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by s.back,s1.city,s1.province having count(back)=1
+            )  a
+
+            group by ${groupName}
+        </if>
+        <if test="groupName=='brand' or groupName=='platForm' ">
+            select ${groupName}, count(1) num   from  (
+            select  ${groupName},back from  youngor04_all  where  appkey=#{appKey}  and notEmpty(${groupName})
+            and  pageShow=1
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by  back ,${groupName} having count(back)=1
+            )   s
+            group by ${groupName}
+        </if>
+    </select>
+
+    <select id="getUserImgOpen"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        <if test="groupName=='city' or groupName=='province' ">
+            select ${groupName}, uniqExact(back) num  from
+            (
+            select s.appkey ,s.back ,s.dt,s1.city city  ,s1.province  province   from  youngor04_all s  global  left join
+            (
+            select  reqIp,province ,city   from   ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by   reqIp,province ,city
+            ) s1 on  s.reqIp=s1.reqIp
+            )  a
+            where   appkey =#{appKey}  and notEmpty(${groupName})
+            <if test="endDate!=null">
+                and  dt &lt;=  #{endDate}
+            </if>
+            <if test="beginDate!=null">
+                and  dt &gt;=  #{beginDate}
+            </if>
+            group by ${groupName}
+        </if>
+        <if test="groupName=='brand' or groupName=='platForm' ">
+            select ${groupName},uniqExact(back) num  from   youngor04_all s  where   appkey =#{appKey}   and notEmpty(${groupName})
+            <if test="endDate!=null">
+                and  dt &lt;=  #{endDate}
+            </if>
+            <if test="beginDate!=null">
+                and  dt &gt;=  #{beginDate}
+            </if>
+            group by ${groupName}
+        </if>
+    </select>
+
+    <!-- <select id="getUserImgNewUserTotal"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+         select ${groupName}, uniqExact(openId) num  from  youngor04_all
+         where  isfirstday=1  and appkey=#{appKey}  and notEmpty(${groupName})
+         group by ${groupName}
+     </select>-->
+
+    <select id="getUserImgVisoUserTotal"  resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.user.UserTypeVO">
+        select ${groupName}, uniqExact(openId) visNum ,uniqExact(uu) useNum
+        from  youngor04_all
+        where  pageShow=1  and notEmpty(${groupName})
+        and appkey =#{appKey}
+        group by ${groupName}
+
+    </select>
+
+    <select id="getUserPage"  resultType="com.etocrm.sdk.entity.user.UserDatailVO" parameterType="com.etocrm.sdk.entity.user.UserQueryVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        <if test="colum=='province' or colum=='city' ">
+            select  u.openId openId ,u.unionId unionId ,s.uu userId ,u.nickname nickName from  (
+            select uu,reqIp ,t from
+            (
+            select uu,reqIp,dt,t from youngor04_all where appShow=1 and appkey =#{appKey} and dt &lt;= #{endDate}
+            order by t limit 1 by uu
+            ) a  where  dt &gt;=  #{beginDate}
+            ) s
+            global   left  join
+            (
+            select  reqIp,province ,city   from   ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            <if test="colum=='province'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and province=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='city'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and  city=#{searchContent}
+                </if>
+            </if>
+            group by   reqIp,province ,city
+            )ip  on s.reqIp=ip.reqIp
+            global left join   (
+            select nickname,uu,openId,unionId,createtime  from  sdk_user su where  appkey =#{appKey}
+            ) u on u.uu=s.uu
+            where   1=1
+            <if test="colum=='province'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and ip.province=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='city'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and  ip.city=#{searchContent}
+                </if>
+            </if>
+
+            order by s.t asc
+
+        </if>
+
+        <if test="colum=='platForm' or colum=='brand' ">
+            select u.openId openId ,u.unionId unionId ,s.uu userId ,u.nickname nickName from (
+            select uu ,t from
+            (
+            select uu ,dt,t,platForm,brand from youngor04_all where appShow=1 and appkey =#{appKey} and dt &lt;= #{endDate}
+            order by t limit 1 by uu
+            ) a  where  dt &gt;=  #{beginDate}
+            <if test="colum=='platForm'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and  platForm=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='brand'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and  brand=#{searchContent}
+                </if>
+            </if>
+            ) s
+            global left join (
+            select nickname,uu,openId,unionId,createtime from sdk_user su where appkey =#{appKey}
+            ) u on u.uu=s.uu
+            order by s.t
+            <!-- select  u.openId openId ,u.unionId unionId ,s.uu userId ,u.nickname nickName from  (
+             select s.uu ,s.platform,s.brand,user1.dt dt,user1.t t  from
+             (select uu,platform,brand,t from youngor04_all where appshow=1 and appkey =#{appKey} and dt &lt;=  #{endDate} and dt &gt;=  #{beginDate}   ) s
+             global inner join(  select uu,  min(dt) as dt  ,min(t) as t      from (
+             select uu, dt,t
+             from youngor04_all  where appshow =1  and appkey =#{appKey}
+             and  dt &lt;=  #{endDate}
+             ORDER BY t asc         ) a
+             group by uu   ) user1  on  s.uu=user1.uu and s.t=user1.t
+             <if test="beginDate!=null">
+                 where  user1.dt &gt;=  #{beginDate}
+             </if>
+             ) s
+             global left join   (
+             select nickname,uu,openId,unionId,createtime  from  sdk_user su where  appkey =#{appKey}
+             ) u on u.uu=s.uu
+             where   1=1
+             <if test="colum=='platform'">
+                 <if test="searchContent!='' and searchContent!=null">
+                     and  platform=#{searchContent}
+                 </if>
+             </if>
+             <if test="colum=='brand'">
+                 <if test="searchContent!='' and searchContent!=null">
+                     and  brand=#{searchContent}
+                 </if>
+             </if>
+             order by s.t-->
+        </if>
+
+
+
+        limit  #{limit},#{pageSize}
+    </select>
+
+    <select id="getUserCount"  resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.user.UserQueryColVO">
+
+        <if test="colum=='province' or colum=='city' ">
+            select count(1) from (
+            select  u.openId openId ,u.unionId unionId ,s.uu userId ,u.nickname nickName from  (
+            select s.uu ,s.reqIp,user1.dt dt  from
+            (select uu,reqIp,t from youngor04_all  where appShow=1 and appkey =#{appKey} and dt &lt;=  #{endDate} and dt &gt;=  #{beginDate}    ) s global inner join(  select uu,  min(dt) as dt,min(t) as t         from (
+            select uu,appkey,         dt,t
+            from youngor04_all  where appShow =1  and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            ORDER BY t asc         ) a
+            group by uu   ) user1  on  s.uu=user1.uu  and s.t=user1.t
+            <if test="beginDate!=null">
+                where  user1.dt &gt;=  #{beginDate}
+            </if>
+            ) s
+            global left join
+            (
+            select reqIp,province ,city from ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            <if test="colum=='province'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and province=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='city'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and city=#{searchContent}
+                </if>
+            </if>
+            group by reqIp,province ,city
+            )ip on s.reqIp=ip.reqIp
+            global left join   (select nickname,uu,openId,unionId  from  youngor04_all  where appkey=#{appKey} and  notEmpty(nickname)  and  notEmpty(openId) and  notEmpty(unionId) group by  nickname,uu,openId,unionId ) u on u.uu=s.uu
+            where 1=1
+            <if test="colum=='province'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and province=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='city'">
+                <if test="searchContent!='' and searchContent!=null">
+                    and city=#{searchContent}
+                </if>
+            </if>
+            ) s
+
+
+        </if>
+
+        <if test="colum=='platForm' or colum=='brand' ">
+            select  count(1)  from
+            (select   u.openId openId ,u.unionId unionId ,s.uu userId ,u.nickname nickName from (
+            select s.uu ,s.platForm,s.brand,user1.dt dt  from
+            (select uu,platForm,brand ,t from youngor04_all  where appShow=1 and appkey =#{appKey} and dt &lt;=  #{endDate} and dt &gt;=  #{beginDate}    ) s global inner join(  select uu,  min(dt) as dt         from (
+            select uu,appkey,         dt
+            from youngor04_all  where appShow =1  and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            ORDER BY t asc         ) a
+            group by uu   ) user1  on  s.uu=user1.uu
+            <if test="beginDate!=null">
+                where  user1.dt &gt;=  #{beginDate}
+            </if>
+            group by  s.uu,user1.dt,s.platForm,s.brand
+            ) s
+            global left join   (
+            select nickname,uu,openId,unionId,createtime  from  sdk_user su where  appkey =#{appKey}
+            ) u on u.uu=s.uu
+
+            where 1=1
+            <if test="colum=='platForm'">
+                <if test="searchContent!=null and searchContent!=''">
+                    and platForm=#{searchContent}
+                </if>
+            </if>
+            <if test="colum=='brand'">
+                <if test="searchContent!=null and searchContent!=''">
+                    and brand=#{searchContent}
+                </if>
+            </if>
+            ) sdk
+        </if>
+
+
+
+    </select>
+
+    <select id="getUserVisDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select  dt, count(1) num  from  youngor04_all    where   pageShow=1
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by dt
+    </select>
+
+    <select id="getExitDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select  dt ,count(1) num from
+        (
+        select  dt, back    from  youngor04_all    where appkey =#{appKey}  and   pageShow=1
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by dt,back
+        having  count(back)=1
+         )  group  by dt
+    </select>
+
+    <select id="getUserActive" parameterType="com.etocrm.sdk.entity.user.UserVO" resultType="java.lang.Integer">
+
+      SELECT  uniqExact(uu) num from youngor04_all  s where   appkey =#{appKey}   and  dt &lt;=  #{endDate} and  dt &gt; #{beginDate}
+
+    </select>
+
+
+    <select id="getUserActiveDate" parameterType="com.etocrm.sdk.entity.user.UserVO" resultType="com.etocrm.sdk.entity.user.UserActiveRepVO">
+      SELECT  dt curDate,uniqExact(uu) dau  from  youngor04_all  s where appkey =#{appKey}
+      and  dt &lt;=  #{endDate}
+      and  dt &gt;=  #{beginDate}
+      group  by dt
+    </select>
+
+    <select id="getUserActiveDatePage" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="com.etocrm.sdk.entity.user.UserActiveRepVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        SELECT  dt curDate,uniqExact(uu) dau  from  youngor04_all  s where appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by dt
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getStopTime" parameterType="com.etocrm.sdk.entity.user.UserTypeVO" resultType="java.lang.Integer">
+        select  sum(t1) from (
+        select    max(`t`) m,min(`t`) n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from
+        <if test="groupName=='province'  or  groupName=='city' ">
+            (
+
+            select s.appkey  ,s.dt,s1.city city  ,s1.province  province ,s.back,s.uu,s.t  from  youngor04_all  s  global  left join
+            (
+            select  reqIp,province ,city   from   ip1
+            where   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by   reqIp,province ,city
+            ) s1 on  s.reqIp=s1.reqIp
+            )  a
+        </if>
+        <if test="groupName=='brand' or  groupName=='platForm' ">
+            youngor04_all
+        </if>
+
+        where appkey= #{appKey}
+        <if test="groupName=='province'">
+            and province=#{value}
+        </if>
+        <if test="groupName=='city'">
+            and city=#{value}
+        </if>
+        <if test="groupName=='brand'">
+            and brand=#{value}
+        </if>
+        <if test="groupName=='platForm'">
+            and platForm=#{value}
+        </if>
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back,uu
+        ) as f
+
+    </select>
+
+    <select id="getDayStopTime" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+        select  sum(t1) from (
+        select    max(`t`) m,min(`t`) n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all  where appkey= #{appKey}
+        and  dt=  #{beginDate}
+        group by  back,uu
+        ) as f
+
+    </select>
+
+    <select id="getPortalDetailDatas" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.user.UserDateRepVO">
+      select   dt `date`,
+        uniqExact(back) openNum ,
+        sum(if(pageShow =1,1,0)) visitNum
+        from  youngor04_all  where appkey= #{appKey}
+          and  dt &lt;=  #{endDate}
+      and  dt &gt;=  #{beginDate}
+       group by dt  order by dt asc
+    </select>
+
+   <select id="getUserStatisticsGroupByDateSummary1" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="java.util.Map">
+       <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select dt dateTime,
+         uniqExact(back) openNum ,
+         sum(if(pageShow =1,1,0)) visitNum,
+         uniqExact(if(pageShow =1,uu,null)) userNum
+       from  youngor04_all where dt &lt;=  #{endDate}
+       and  dt>=#{beginDate}
+       and appkey=#{appKey}
+       group by  dt  order by dt asc
+       limit #{limit},#{pageSize}
+   </select>
+
+    <select id="getUserStatisticsGroupByDateSummary2" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="com.etocrm.sdk.entity.user.UserStaticDate">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+          select dateTime, count(1) `count` from
+          (select uu,min(dt) dateTime  from youngor04_all where appShow=1 and  dt &lt;=  #{endDate}
+             and appkey=#{appKey}
+           group by uu
+          )
+          a  where dateTime>=#{beginDate}
+          group by  dateTime
+          limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getUserStatisticsGroupByDateTiaochu" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="com.etocrm.sdk.entity.user.UserStaticDate">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select     dt dateTime,cast(count(1)as String) `count`   from
+        (
+        SELECT   dt ,back  FROM
+        youngor04_all s  where     pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt>=#{beginDate}
+        group by dt ,back having count(back)=1
+        )   a  group  by dt
+        order by  dt asc
+         limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getUserStatisticsGroupByDateStop" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="com.etocrm.sdk.entity.user.UserStaticDate">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  dt dateTime,cast(sum(t1)as String) `count` from ( select    max(`t`) m,min(`t`) n, dt,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all
+        where appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt>=#{beginDate}
+        group by  back,dt) group by   dt order by dt
+        limit #{limit},#{pageSize}
+
+    </select>
+
+    <select id="getUserStatisticsGroupByDateCount" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+            select uniqExact(dt)num
+            from youngor04_all where dt &lt;= #{endDate}
+            and dt>=#{beginDate} and pageShow=1
+            and appkey=#{appKey}
+    </select>
+
+    <select id="getUserDetail" parameterType="com.etocrm.sdk.entity.user.UserDetailsVO" resultType="com.etocrm.sdk.entity.user.UserDetailsReqVO">
+     select uu uId,unionId ,openId ,nickname  nickName ,country ,gender,language from  youngor04_all
+     where appkey=#{appKey}
+     and uu=#{userId}
+      group by uu,unionId ,openId ,nickname  ,country ,gender,language
+
+    </select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mapper>

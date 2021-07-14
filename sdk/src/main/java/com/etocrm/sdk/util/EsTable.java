@@ -15,12 +15,29 @@ public class EsTable {
      **/
     public  static  String  PAGE="page";
 
-    public  static  String  INDEX = "sdk-20200826";
+    public  static  String  INDEX = "sdk-*";
 
-    public   static   String  EVENT="event";
+    public  static  String  EVENT="event";
+
+    public  static  String  FUNNEL="funnel";
+
+    /**
+    * @Description :漏斗步骤
+    * @author xing.liu
+    * @date 2020/10/15
+    **/
+    public static final String STEP = "step";
 
 
 
+    /**
+     * 二维码管理
+     * */
+    public   static   String  QR_CODE="qr_code";
 
+    /**
+     * 二维码组管理
+     * */
+    public   static   String  QR_CODE_GROUP="qr_code_group";
 
 }

@@ -14,7 +14,6 @@ public class PageVO {
     private String appKey;
 
     //@NotNull(message = "appId不能为空")
-    @NotNull
     private String appId;
 
     @NotNull(message = "开始时间不能为空",profiles = "profile_4")

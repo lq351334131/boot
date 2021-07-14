@@ -5,7 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.etocrm.sdk.base.ResponseCode;
 import com.etocrm.sdk.base.Result;
-import com.etocrm.sdk.entity.EventVO.*;
+import com.etocrm.sdk.entity.eventVO.*;
 import com.etocrm.sdk.service.EventService;
 import com.etocrm.sdk.util.*;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,6 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

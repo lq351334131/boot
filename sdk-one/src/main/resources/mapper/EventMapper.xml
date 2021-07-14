@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.EventMapper">
+    <insert id="insert" parameterType="com.etocrm.sdk.entity.event.EventAddVO" >
+     insert into event (id,eventKey,eventName) values (#{id},#{eventKey},#{eventName})
+    </insert>
+
+    <insert id="insertParam" parameterType="com.etocrm.sdk.entity.event.EventParam" >
+     insert into event (`type`,k,`name`,eventId) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.type},  #{item.k}, #{item.name}, #{item.eventId})
+        </foreach>
+    </insert>
+
+    <update id="deleteId" parameterType="java.lang.String" >
+     alter table event update is_del=1 where id=#{id}
+    </update>
+
+    <update id="deleteParamId" parameterType="java.lang.String" >
+     alter table event update is_del=1 where eventId=#{id}
+    </update>
+
+    <update id="update" parameterType="com.etocrm.sdk.entity.event.EventAddVO" >
+     alter table event update  eventKey=#{eventKey} ,eventName=#{eventName}  where id=#{id}
+    </update>
+
+    <update id="updateParam" parameterType="com.etocrm.sdk.entity.event.EventParam" >
+     alter table event update  k=#{k} ,`name`=#{name} ,`type`=#{type}  where id=#{id}
+    </update>
+
+    <select id="getPage" parameterType="com.etocrm.sdk.entity.event.EventVO" resultType="com.etocrm.sdk.entity.event.EventListPageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  id,eventName,eventKey,createTime from  event  where  eventId='0' and is_del=0
+        <if test="eventName!=null and eventName!=''">
+            and  eventName=#{eventName}
+        </if>
+        <if test="eventKey!=null and eventKey!=''">
+            and  eventKey=#{eventKey}
+        </if>
+        order by createTime desc
+        limit #{limit}, #{pageSize}
+    </select>
+
+    <select id="getEventCount" parameterType="com.etocrm.sdk.entity.event.EventVO" resultType="java.lang.Integer">
+        select count(id) from   event  where  eventId='0' and is_del=0
+        <if test="eventName!=null and eventName!=''">
+            and  eventName=#{eventName}
+        </if>
+        <if test="eventKey!=null and eventKey!=''">
+            and  eventKey=#{eventKey}
+        </if>
+
+    </select>
+
+    <select id="getEventExcel" parameterType="com.etocrm.sdk.entity.event.DownLoadExcel" resultType="com.etocrm.sdk.entity.event.EventListVO">
+        select  id,eventName,eventKey,createTime from  event  where  eventId='0' and is_del=0
+        <if test="eventName!=null and eventName!=''">
+            and  eventName=#{eventName}
+        </if>
+        <if test="eventKey!=null and eventKey!=''">
+            and  eventKey=#{eventKey}
+        </if>
+        order by createTime desc
+    </select>
+
+    <select id="getId" parameterType="java.lang.String" resultType="com.etocrm.sdk.entity.event.EventClickhouse">
+     select   id,eventName,eventKey,createTime,k,`name`,`type`,eventId from  event  where   is_del=0
+          and  (id=#{id} or eventId=#{id})
+
+    </select>
+
+    <select id="getEventAnalysisListPage" parameterType="com.etocrm.sdk.entity.event.EventAnalysisVO" resultType="com.etocrm.sdk.entity.event.AnalysisListVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+       SELECT   e.createTime createTime  ,e.eventKey ,e.eventName ,count(1) eventNum, uniqExact(uu) userNum , if(userNum=0,0,intDiv(eventNum,userNum)) avgEventNum  from
+        youngor04_all  s  GLOBAL join   event e on (e.eventKey=s.tv)
+       where  k=#{appKey}
+       <if test="eventName!=null and eventName!= ''">
+           and  e.eventName=#{eventName}
+       </if>
+        <if test="eventKey!=null and eventKey!= ''">
+            and  e.eventKey=#{eventKey}
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+       GROUP  by   e.eventKey ,e.eventName,e.createTime
+        limit #{limit}, #{pageSize}
+
+    </select>
+
+    <select id="getEventAnalysisCount" parameterType="com.etocrm.sdk.entity.event.EventAnalysisVO" resultType="java.lang.Integer">
+       SELECT  uniqExact( e.eventKey ,e.eventName,e.id)  from   youngor04_all s  global join  event e   on (e.eventKey=s.tv)
+       where  k=#{appKey}
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+    </select>
+
+    <select id="getEventId" parameterType="com.etocrm.sdk.entity.event.EventIDPO" resultType="com.etocrm.sdk.entity.event.EventDateRepVO">
+        select toString(dt) date, count(1) eventNum, uniqExact(uu) userNum , if(userNum=0,0,intDiv(eventNum,userNum)) avgEventNum
+        from youngor04_all  where  k=#{appKey} and  tv=#{tv}
+        <if test="tl!='' and tl!=null">
+            and  tl=#{tl}
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+        group by  dt
+    </select>
+
+    <select id="getTvId" parameterType="java.lang.String" resultType="com.etocrm.sdk.entity.event.EventIDPO">
+     select eventKey tv ,eventName tl  from  event  where is_del=0  and  id=#{id}
+    </select>
+
+    <select id="getEventParamList" parameterType="com.etocrm.sdk.entity.event.ParamIDVO" resultType="com.etocrm.sdk.entity.event.EventParamListVO">
+      select k ,`name` from  event  where is_del=0  and   eventId=#{eventId} and  `type`=#{type}
+    </select>
+
+    <select id="getUserList" parameterType="com.etocrm.sdk.entity.event.EventUserTVVO" resultType="com.etocrm.sdk.entity.event.EventUserRepVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select uu userId,o openId,u unionId ,nickname nickName
+        from youngor04_all  where  k=#{appKey} and  tv=#{tv} and notEmpty(u) and notEmpty(nickname)
+        <if test="tl!='' and tl!=null">
+            and  tl=#{tl}
+        </if>
+        <if test="content!='' and content!=null">
+            and (nickname like #{content} or o like #{content})
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+        group by   uu,o,nickname,u
+        limit  #{limt} ,#{pageSize}
+    </select>
+
+    <select id="getUserCount" parameterType="com.etocrm.sdk.entity.event.EventUserTVVO" resultType="java.lang.Integer">
+        select uu userId,o openId,u unionId ,nickname nickName
+        from youngor04_all  where  k=#{appKey} and  tv=#{tv} and notEmpty(u) and notEmpty(nickname)
+        <if test="tl!='' and tl!=null">
+            and  tl=#{tl}
+        </if>
+        <if test="content!='' and content!=null">
+            and (nickname like #{content} or o like #{content})
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+        group by   uu,o,nickname,u
+    </select>
+
+    <select id="getUserListExcel" parameterType="com.etocrm.sdk.entity.event.EventUserExcelVO" resultType="com.etocrm.sdk.entity.event.EventUserRepVO">
+        select uu userId,o openId,u unionId ,nickname nickName
+        from youngor04_all  where  k=#{appKey} and  tv=#{tv} and notEmpty(u) and notEmpty(nickname)
+        <if test="tl!='' and tl!=null">
+            and  tl=#{tl}
+        </if>
+        <if test="content!='' and content!=null">
+            and (nickname like #{content} or o like #{content})
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+        group by   uu,o,nickname,u
+    </select>
+
+    <select id="getEventAnalysisListExcel" parameterType="com.etocrm.sdk.entity.event.EventAnalysisExcelVO" resultType="com.etocrm.sdk.entity.event.AnalysisListVO">
+        SELECT   e.createTime createTime  ,e.eventKey ,e.eventName ,count(1) eventNum, uniqExact(uu) userNum , if(userNum=0,0,intDiv(eventNum,userNum)) avgEventNum  from
+        youngor04_all  s  GLOBAL join   event e on (e.eventKey=s.tv)
+        where  appkey=#{appKey}
+        <if test="eventName!=null and eventName!= ''">
+            and  e.eventName=#{eventName}
+        </if>
+        <if test="eventKey!=null and eventKey!= ''">
+            and  e.eventKey=#{eventKey}
+        </if>
+        and  dt &lt;=  toDate(#{endDate})
+        and  dt &gt;=  toDate(#{beginDate})
+        GROUP  by   e.eventKey ,e.eventName,e.createTime
+    </select>
+
+    <!--热搜-->
+    <select id="getSearch" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      SELECT
+        count(1) pv,
+        uniqExact(uu) uv
+     from (
+         select
+	        te,
+	        visitParamExtractString(json,'k') k,
+            visitParamExtractString(json,'v') v,
+            uu
+          from  (
+                  select  visitpath,te,assumeNotNull(te) te1,uu, JSONExtractArrayRaw(te1) a1
+                  from  eto.youngor04_all
+                 where  `search`=1
+                 and appkey=#{appKey}
+                and  dt &lt;=  toDate(#{endDate})
+                and  dt &gt;=  toDate(#{beginDate})
+         ) a  array join a1 as json
+     )
+    </select>
+
+
+</mapper>

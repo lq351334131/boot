@@ -1,0 +1,1426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.PageMapper">
+    <insert id="batchInsert" parameterType="com.etocrm.sdk.entity.page.PageListDownloadVO">
+        insert into pathDetailInfo (id,visitPath,pathName,moduleName,pathTypeId)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (replaceAll(toString(generateUUIDv4()), '-', ''),  #{item.visitPath}, #{item.pathName}, #{item.moduleName}, #{item.pathTypeId})
+        </foreach>
+
+    </insert>
+    <select id="getPageListPage" parameterType="com.etocrm.sdk.entity.page.PageListVO" resultType="com.etocrm.sdk.entity.page.PageListResVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0'
+        <include refid="getWhere"/>
+        order by createtime desc
+        limit #{limit}, #{pageSize}
+    </select>
+
+    <select id="getPageCount" parameterType="com.etocrm.sdk.entity.page.PageListVO" resultType="java.lang.Integer">
+        select count(1) from  pathDetailInfo where  pid='0'
+        <include refid="getWhere"/>
+    </select>
+
+    <sql id="getWhere">
+        <if test="pathName!='' and pathName!=null">
+            and  pathName like concat(#{pathName},'%')
+        </if>
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test=" pathTypeId!=null">
+            and  pathTypeId= #{pathTypeId}
+        </if>
+    </sql>
+    <select id="getPageId" parameterType="java.lang.String" resultType="com.etocrm.sdk.entity.page.PageListResVO">
+        select  id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo  where pid='0'
+        and id=#{id}
+    </select>
+
+    <update id="updatePage" parameterType="com.etocrm.sdk.entity.page.PageListResVO">
+        alter table  pathDetailInfo update
+        <trim  suffixOverrides=",">
+            <if test="moduleName!=null">moduleName=#{moduleName},</if>
+            <if test="pathName!=null">pathName=#{pathName},</if>
+            <if test="pathTypeId!=null">pathTypeId=#{pathTypeId},</if>
+            <if test="visitPath!=null">visitPath=#{visitPath},</if>
+        </trim>
+        WHERE id=#{id}
+    </update>
+
+    <!--<delete id="deleteId" parameterType="java.lang.String">
+      alter table  pathDetailInfo delete where id=#{id}
+    </delete>-->
+
+    <update id="deleteId" parameterType="java.lang.String">
+        alter table  pathDetailInfo update is_del=1 where id=#{id}
+    </update>
+
+
+    <select id="getPageChannelId" parameterType="com.etocrm.sdk.entity.page.PageChannelVO" resultType="com.etocrm.sdk.entity.page.PageChannelListVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  id,name,params,pid pathId from  pathDetailInfo  where  pid=#{pathId}  and is_del=0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by createtime desc
+        limit #{limit}, #{pageSize}
+    </select>
+    <select id="getPageChannelCount" parameterType="com.etocrm.sdk.entity.page.PageChannelVO" resultType="java.lang.Integer">
+        select count(1) from  pathDetailInfo  where pid=#{pathId} and is_del=0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.etocrm.sdk.entity.page.PageChannelEditVO">
+        insert into pathDetailInfo (id,name,params,pid)
+        values(replaceAll(toString(generateUUIDv4()), '-', ''), #{name},#{params}, #{pathId})
+    </insert>
+
+    <update id="updateChannel" parameterType="com.etocrm.sdk.entity.page.PageChannelEditVO">
+        alter table  pathDetailInfo update
+        <trim  suffixOverrides=",">
+            <if test="name!=null">name=#{name},</if>
+            <if test="params!=null">params=#{params},</if>
+        </trim>
+        WHERE id=#{id}
+    </update>
+
+    <select id="getPageChanelId" parameterType="java.lang.String" resultType="com.etocrm.sdk.entity.page.PageChannelListVO">
+        select  id,name,params,pid pathId from  pathDetailInfo  where id=#{id}
+    </select>
+
+    <select id="getVisitPage" parameterType="com.etocrm.sdk.entity.page.PageAccessVo" resultType="com.etocrm.sdk.entity.page.VisitTotalVO">
+        select sum(if(pageShow=1,1,0))visitNum,
+        uniqExact(if(pageShow=1,uu,Null))personNum,
+        sum(if(pageShare=1,1,0)) shareNum,
+        sum(if(appHide=1,1,0)) exitNum,
+        uniqExact(back) openNum
+         from  youngor04_all
+        where appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        </select>
+
+        <select id="getPageVistList" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="com.etocrm.sdk.entity.page.VisitTotalPVO">
+            <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+            select visitPath visitPath ,uniqExact(if(pageShow=1,uu,Null)) personNum,sum(if(pageShow=1,1,0)) visitNum,
+            sum(if(appHide=1,1,0)) avgExitRate,
+            sum(if(pageShare=1,1,0)) shareNum
+             from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+            and appkey=#{appKey}   and visitPath!='un'
+             and  visitPath    global in
+             <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+               #{item}
+             </foreach>
+            group by  visitPath
+            limit #{limit},#{pageSize}
+        </select>
+        <select id="getPageVistSharse" parameterType="com.etocrm.sdk.entity.page.VisitPageVO" resultType="com.etocrm.sdk.entity.page.VisitTotalPVO">
+            select  count(1) shareNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+            and appkey=#{appKey}
+            and pageShare=1
+            and  visitpath =#{visitPath}
+        </select>
+        <select id="getPageVistExit" parameterType="com.etocrm.sdk.entity.page.VisitPageVO" resultType="com.etocrm.sdk.entity.page.VisitTotalPVO">
+            select count(1) exitNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+            and appkey=#{appKey}
+            and  appHide=1
+            and  visitPath =   #{visitPath}
+        </select>
+
+
+        <select id="getPageVistCount" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.lang.Integer">
+             select  uniqExact(visitPath)  from  youngor04_all where     appkey=#{appKey} and pageShow=1
+                and  dt &lt;=  #{endDate}
+                and  dt &gt;=  #{beginDate}
+                and visitPath  GLOBAL in
+                <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+
+        </select>
+
+        <!--入口页 ：每个back里面的第一个app show上报所带的ao,改2021-05-06-->
+    <select id="getHomePage" parameterType="com.etocrm.sdk.entity.page.PageAccessVo" resultType="com.etocrm.sdk.entity.page.HomeTotalVO">
+        select  sum(a.visitNum) visitNum, sum(a.uu) personNum ,sum(entryNum)entryNum  from
+        (
+          select
+          path,count(1)visitNum,uniqExact(uu) uu
+          from
+          youngor04_all
+           where appkey=#{appKey} and pageShow=1
+           and dt &lt;= #{endDate}
+           and  dt &gt;=  #{beginDate}
+          group by path
+        )  a right join
+        (
+        select path, count(1) entryNum from (
+                    select
+                    path,back,dt
+                    from youngor04_all
+                    where appkey=#{appKey} and appShow=1 and entryPage=1
+                    and dt &lt;= #{endDate}
+                    --ORDER BY t  LIMIT  1   BY back
+
+            ) a where  dt &gt;=  #{beginDate}
+             group by path
+        ) b on  a.path=b.path
+
+
+    </select>
+
+    <!--<select id="getPageHomeCount" parameterType="com.etocrm.sdk.entity.page.VisitPageVO" resultType="java.lang.Integer">
+        select uniqExact(path)
+           from  youngor04_all  where   appkey=#{appKey} and   entrypage=1
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            and  path  global  in  ( select visitPath  from   pathDetailInfo  )
+    </select>-->
+
+<!--    <select id="getHomePageVistList" parameterType="com.etocrm.sdk.entity.page.VisitPageVO" resultType="com.etocrm.sdk.entity.page.HomeVO">-->
+<!--        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>-->
+<!--        select  a.visitPath,a.visitNum,a.personNum,b.entryNum from-->
+<!--        (-->
+<!--        select  visitPath ,count(visitPath) visitNum, uniqExact(openId) personNum from    youngor04_all  where  pageshow=1-->
+<!--        and appkey=#{appKey}  and  notEmpty(openId)-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        and  dt &gt;=  #{beginDate}-->
+<!--        group  by visitPath-->
+<!--        )  a  global  join  (-->
+<!--        select path ,uniqExact(back) entryNum from  youngor04_all-->
+<!--        where appkey=#{appKey}  and  entrypage=1-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        and  dt &gt;=  #{beginDate}-->
+<!--        group  by path-->
+<!--        ) b  on a.visitPath=b.path-->
+<!--        limit #{limit},#{pageSize}-->
+<!--    </select>-->
+    <!--页面页停留时长-->
+    <select id="getStopTime" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.util.HashMap">
+<!--        select  sum(t1) stopTime  from (-->
+<!--        select  back, max(t)m,min(t) n,-->
+<!--        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1-->
+<!--        from  youngor04_all where  appkey=#{appKey}  and  pageshow=1-->
+<!--        <if test="p!=null and p!=''">-->
+<!--            and  visitpath=#{p}-->
+<!--        </if>-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        and  dt &gt;=  #{beginDate}-->
+<!--        group by  back,uu-->
+<!--        ) as f-->
+        select  sum(t1) from
+        (
+        select
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from
+        (
+        select back, max(t)m from   youngor04_all sa
+        where  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back
+        ) a  inner join
+        (
+        select    back ,min(t)n  from youngor04_all sa
+        where pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="p!=null and p!=''">
+            and  visitPath=#{p}
+        </if>
+        group  by  back
+        )b   on  a.back=b.back
+        )
+
+    </select>
+    <select id="getOpenTime" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.lang.Integer">
+       select uniqExact(back) openNum
+        from  youngor04_all where  appkey=#{appKey}
+        and  visitPath=#{p}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+
+
+
+    <select id="getPageList"  resultType="com.etocrm.sdk.entity.page.PageListResVO">
+        select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0'
+    </select>
+
+
+    <select id="getPageVistListAll" parameterType="com.etocrm.sdk.entity.page.VisitPageVO" resultType="com.etocrm.sdk.entity.page.VisitPageExcel">
+        select visitPath visitPath ,uniqExact(openId) personNum,count(visitPath) visitNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        and appkey=#{appKey}  and pageShow=1 and visitPath!='un'
+        and  visitPath    global in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group by  visitPath
+    </select>
+    <select id="getUserCount" parameterType="com.etocrm.sdk.entity.page.PageUserVO" resultType="java.lang.Integer">
+        select count(1) from
+        ( select uu  from youngor04_all where   appkey=#{appKey} and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        and  visitPath GLOBAL in  (  select   visitPath   from   pathDetailInfo where id=#{visitpathId})
+         group by uu
+         ) s
+        global  left  join(
+        select nickname,openId,uu,unionId from youngor04_all where  notEmpty(nickname) and appkey=#{appKey}  and      notEmpty(openId) and  notEmpty(unionId)
+        <if test="content!='' and content!=null">
+           <!-- and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )-->
+            and   openId like concat('%',#{content},'%')
+        </if>
+        group by nickname,openId,uu,unionId
+        )  u  on s.uu=u.uu
+        <if test="content!='' and content!=null">
+            where  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+
+<!--        select  uniqExact(uu ,nickname,openId,unionId)  from  youngor04_all s-->
+<!--        WHERE appkey=#{appKey}-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        and  dt &gt;=  #{beginDate}-->
+<!--        and  visitpath GLOBAL in  (-->
+<!--        select   visitPath   from   pathDetailInfo where id=#{visitpathId}-->
+<!--        )-->
+<!--        <if test="content!=null and content!=''">-->
+<!--            and (nickname like #{content} or openId like #{content})-->
+<!--        </if>-->
+    </select>
+
+    <select id="getUserPage" parameterType="com.etocrm.sdk.entity.page.PageUserVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+<!--        select uu userId ,nickname nickName, openId, unionId from  youngor04_all s-->
+<!--          where    appkey=#{appKey}-->
+<!--          and  dt &lt;=  #{endDate}-->
+<!--          and  dt &gt;=  #{beginDate}-->
+<!--          and  s.visitpath  global  in ( select  visitPath from pathDetailInfo where id=#{visitpathId})-->
+<!--        <if test="content!=null and content!=''">-->
+<!--            and (nickname like #{content} or openId like #{content})-->
+<!--        </if>-->
+<!--        group  by  userId ,nickname,openId,unionId-->
+        select s.uu userId ,u.nickname nickName, u.openId openId, u.unionId unionId from
+        ( select uu  from youngor04_all where   appkey=#{appKey} and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        and  visitpath GLOBAL in  (  select   visitPath   from   pathDetailInfo where id=#{visitpathId})
+        group by uu
+        ) s
+        global  left  join(
+        select nickname,openId,uu,unionId from youngor04_all where  notEmpty(nickname) and appkey=#{appKey}  and      notEmpty(openId) and  notEmpty(unionId)
+        <if test="content!='' and content!=''">
+            and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by nickname,openId,uu,unionId
+        )  u  on s.uu=u.uu
+        <if test="content!='' and content!=''">
+            where  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+         group by  s.uu ,u.nickname , u.openId,u.unionId
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getUserPageAll" parameterType="com.etocrm.sdk.entity.page.PageUserVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+<!--        select uu userId ,nickname nickName, openId, unionId from  youngor04_all s-->
+<!--        where s.visitpath global  in ( select  visitPath from pathDetailInfo where id=#{visitpathId})-->
+<!--        and appkey=#{appKey}-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        and  dt &gt;=  #{beginDate}-->
+<!--        <if test="content!=null and content!=''">-->
+<!--            and (nickname like #{content} or openId like #{content})-->
+<!--        </if>-->
+<!--        group  by  userId ,nickname,openId,unionId-->
+        select s.uu userId ,u.nickname nickName, u.openId openId, u.unionId unionId from
+        ( select uu  from youngor04_all where   appkey=#{appKey} and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        and  visitpath GLOBAL in  (  select   visitPath   from   pathDetailInfo where id=#{visitpathId})
+        group by uu
+        ) s
+        global  left  join(
+        select nickname,openId,uu,unionId from youngor04_all where  notEmpty(nickname) and appkey=#{appKey}  and      notEmpty(openId) and  notEmpty(unionId)
+        <if test="content!='' and content!=''">
+            and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by nickname,openId,uu,unionId
+        )  u  on s.uu=u.uu
+        <if test="content!='' and content!=''">
+            where  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by  s.uu ,u.nickname , u.openId,u.unionId
+    </select>
+
+    <select id="getTotal" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="java.lang.Integer">
+     select count(1) from (
+      select openId,count(1) from  (select openId,back  from  youngor04_all   where   pageShow=1
+        and appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back,openId) GROUP  by openId
+      )
+
+    </select>
+
+    <select id="getPageVisitHabitFrequency" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="java.util.Map">
+     select count(1) num,  userNum from (
+      select uu,count(1)  userNum from  (select uu,back  from  youngor04_all   where   pageShow=1
+        and appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back,uu) GROUP  by uu
+      ) b  group  by   userNum  order by userNum desc
+
+    </select>
+
+    <select id="getPageVisitHabitDepthTotal" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="java.lang.Integer">
+        select sum(num) from (select uniqExact(uu) num from
+        (
+          select uu,back,uniqExact(visitPath) bakNum  from  youngor04_all   where  pageShow=1
+           and appkey=#{appKey} and visitPath!='un'
+           and  dt &lt;=  #{endDate}
+           and  dt &gt;=  #{beginDate}
+          group by  back,uu
+         )
+        a  group  by  bakNum )
+    </select>
+
+    <select id="getPageVisitHabitDepth" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="com.etocrm.sdk.entity.page.PageDepthVO">
+        select uniqExact(uu)num, concat(CAST(bakNum as String),'个页面') as keyName from
+           (select uu,back,uniqExact(visitPath) bakNum  from  youngor04_all   where  pageShow=1
+           and appkey=#{appKey} and visitPath!='un'
+           and  dt &lt;=  #{endDate}
+           and  dt &gt;=  #{beginDate}
+           group by  back,uu )a
+          group  by  bakNum   order by  bakNum
+    </select>
+
+    <select id="getOpen" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="java.lang.Integer">
+        select uniqExact(uu) num  from  youngor04_all   where
+         appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getPageVisitHabitTime" parameterType="com.etocrm.sdk.entity.page.PageVO" resultType="java.lang.Integer">
+      <!--  select uniqExact(uu) from (
+        select   uu,max( t)m,min( t)n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all where   pageshow=1
+        and appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back,uu
+        ) as f         ${sql}-->
+
+        select uniqExact(uu) from
+        (
+        select  uu,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from
+        (
+        select back,uu, max(t)m from   youngor04_all sa
+        where  appkey=#{appKey} and tv='page' and tl='hide'
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back,uu
+        ) a  inner join
+        (
+        select    back ,uu, min(t)n  from youngor04_all sa
+        where pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by  back,uu
+        )b   on  a.back=b.back and a.uu=b.uu
+        )as c   ${sql}
+
+    </select>
+
+    <select id="getDuration" resultType="java.util.Map">
+     select dictName,dictValue, typeCode,`sql` from sys_dict where typeCode='Duration'
+    </select>
+
+    <select id="getPageNameList"  resultType="com.etocrm.sdk.entity.page.PageListResVO">
+        select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0'
+        order by createtime desc
+    </select>
+    <select id="getPageParameterDataCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        select count(1) from  pathDetailInfo  where pid=#{pathId}  and is_del=0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+    </select>
+    <select id="getPageParameterDataList" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  id ,name ,
+        uniqExact( if(pageShow = 1, uu, NULL)) userNum,
+        sum( if(pageShow = 1, 1, 0)) visitNum,
+        sum( if(appHide = 1, 1, 0)) exiNum
+        from
+        (select   b.id,b.name ,a.uu uu  ,a.visitPath, pageShow,appHide from (
+        select paramQ,
+        replace(paramQ,'"','') a,
+        replace(a,'{','') c,
+        replace(c,'}','') d,
+        replace(d,':','=') d1,
+        replace(d1,',','&amp;') kpi_list,
+        uu,
+        pageShow,appHide,
+        visitPath
+        from eto.youngor04_all ya  where q!='un'
+        and (pageShow=1 or appHide=1)
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        ) a  left join(
+
+        select  b.visitPath visitPath ,a.params,a.name,a.id from (
+        select  pid pid ,id,name,params  from  pathDetailInfo
+        where pid!='0' and is_del =0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by  updateTime desc
+        limit #{limit},#{pageSize}
+
+        ) a left join pathDetailInfo b  on a.pid=b.id
+        where  b.pid='0' and b.is_del =0
+
+        ) b  on a.visitPath=b.visitPath and  a.kpi_list=b.params
+
+        ) a  group by  id,name
+    </select>
+
+
+    <select id="getParamSdk" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        select  q,uu,visitPath visitpath,back,tv,tl from  youngor04_all  s
+        where  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and  visitPath  global  in(select visitPath  from pathDetailInfo where id=#{pathId}
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+         )
+    </select>
+
+    <select id="getPageParameterUserListExcel" resultType="com.etocrm.sdk.entity.user.UserDatailVO" parameterType="com.etocrm.sdk.entity.page.PageParameterUserSeaVO">
+
+        select nickname nickName,uu userId, openId, unionId  from  (
+        select
+        s.nickname,s.uu,s.openId,s.unionId,
+        replaceAll(
+        concat(
+        JSONExtractString(JSONExtractRaw(q,1) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,1) ,'v'),#{string},
+        JSONExtractString(JSONExtractRaw(q,2) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,2) ,'v'),#{string},
+        JSONExtractString(JSONExtractRaw(q,3) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,3) ,'v'),#{string},
+        JSONExtractString(JSONExtractRaw(q,4) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,4) ,'v'),#{string},
+        JSONExtractString(JSONExtractRaw(q,5) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,5) ,'v'),#{string},
+        JSONExtractString(JSONExtractRaw(q,6) ,'k'),'=',
+        JSONExtractString(JSONExtractRaw(q,6) ,'v')),concat(#{string},'='),'' ) b   from  youngor04_all s
+        where appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and visitpath=#{p}
+        )  b   where   b.b=#{params}
+        group by  nickname,uu,openId ,unionId
+
+
+    </select>
+
+    <select id="getPageParameterList" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.PageParameterUserSeaVO">
+        select p1.id ,p1.name,p1.params ,p2.visitPath  from  pathDetailInfo  p1  inner  join  pathDetailInfo p2 on p1.pid=p2.id
+        where p1.pid=#{pathId}  and p1.id=#{id}
+    </select>
+    <select id="getPageVisList" resultType="com.etocrm.sdk.entity.page.PageListResVO" parameterType="com.etocrm.sdk.entity.page.VisitPageVO">
+         select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if>
+
+    </select>
+
+    <select id="getPageHomeCount" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.lang.Integer">
+        select  uniqExact(path)  from  youngor04_all where     appkey=#{appKey}  and   entryPage=1 and  apphow=1
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and path  GLOBAL in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+
+    </select>
+    <select id="getPageHomeList" resultType="com.etocrm.sdk.entity.page.HomeVO" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+<!--        select path visitPath ,uniqExact(openId) personNum,count(path) visitNum ,uniqExact(back) entryNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}-->
+<!--        and appkey=#{appKey}    and  entrypage=1 and   apphow=1-->
+<!--        and  path    global in-->
+<!--        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">-->
+<!--            #{item}-->
+<!--        </foreach>-->
+<!--        group by  visitPath-->
+<!--        limit #{limit},#{pageSize}-->
+        select  b.path visitPath,a.visitNum visitNum, a.uu personNum ,b.entryNum entryNum  from
+        (
+        select
+        path,count(1)visitNum,uniqExact(uu) uu
+        from
+        youngor04_all
+        where appkey=#{appKey} and pageShow=1
+        and dt &lt;= #{endDate}
+        and dt &lt;= #{beginDate}
+        group by path
+        )  a right join
+        (
+        select path, count(1) entryNum from (
+        select
+        path,back
+        from youngor04_all
+        where appkey=#{appKey} and appShow=1 and entryPage=1
+        and path!='un'
+        and dt &lt;= #{endDate}
+        and dt &lt;= #{beginDate}
+        -- ORDER BY t  LIMIT  1   BY back
+        ) a   group by path order by  entryNum desc
+        limit #{limit}, #{pageSize}
+        ) b on  a.path=b.path
+
+
+    </select>
+
+    <select id="getPageHomeExcel" resultType="com.etocrm.sdk.entity.page.HomePageExcel" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO">
+<!--        select path visitPath ,uniqExact(openId) personNum,count(path) visitNum ,uniqExact(back) entryNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}-->
+<!--        and appkey=#{appKey}    and  entrypage=1 and  apphow=1   and  entrypage=1-->
+<!--        and  path    global in-->
+<!--        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">-->
+<!--            #{item}-->
+<!--        </foreach>-->
+<!--        group by  visitPath-->
+        select  b.path visitPath,a.visitNum visitNum, a.uu personNum ,b.entryNum entryNum  from
+        (
+        select
+        path,count(1)visitNum,uniqExact(uu) uu
+        from
+        youngor04_all
+        where appkey=#{appKey} and pageShow=1
+        and dt &lt;= #{endDate}
+        and dt &lt;= #{endDate}
+        group by path
+        )  a right join
+        (
+        select path, count(1) entryNum from (
+        select
+        path,back
+        from youngor04_all
+        where appkey=#{appKey} and appShow=1 and entryPage=1
+        and dt &lt;= #{endDate}
+        and dt &lt;= #{endDate}
+        --ORDER BY t  LIMIT  1   BY back
+        ) a group by path
+        ) b on  a.path=b.path
+
+    </select>
+
+
+    <select id="getHomeStopTime" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.lang.Integer">
+        select  sum(t1) from
+        (
+            select
+            dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+            from
+            (
+            select back, max(t)m from   youngor04_all sa
+            where  appkey=#{appKey}
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by  back
+            ) a  inner join
+            (
+            select    back ,min(t)n  from youngor04_all sa
+            where appShow=1 and   entryPage=1
+            and  appkey=#{appKey}
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+            <if test="path!=null and  path!=''">
+            and  path=#{path}
+             </if>
+            group  by  back
+            )b   on  a.back=b.back
+        )
+    </select>
+
+    <!--页面页停留时长-->
+    <select id="getHomeStopTimeExcel" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.util.Map">
+        select path, sum(t1) avgStopTime from
+        (
+        select  path,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from
+        (
+        select back, max(t)m from   youngor04_all sa
+        where  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back
+        ) a  inner join
+        (
+        select    back ,path, min(t)n  from youngor04_all sa
+        where appShow=1 and   entryPage=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and  path     in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group  by  back,path
+        )b   on  a.back=b.back
+        ) c
+
+        group by path
+
+
+    </select>
+    <!--页面页停留时长-->
+    <select id="getVisStopTimeExcel" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.util.Map">
+<!--        select  visitpath visitPath,sum(t1) avgStopTime from (-->
+<!--        select visitpath, max(t)m,min(t) n,-->
+<!--        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000)) t1-->
+<!--        from youngor04_all where appkey=#{appKey} and entrypage=1-->
+<!--        and  visitpath     in-->
+<!--        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">-->
+<!--            #{item}-->
+<!--        </foreach>-->
+<!--        and dt &lt;= #{endDate}-->
+<!--        and dt &gt;= #{beginDate}-->
+<!--        group by back,uu,visitpath-->
+<!--        )  group  by  visitPath-->
+        select visitPath visitPath, sum(t1) avgStopTime from
+        (
+        select  visitpath,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from
+        (
+        select back, max(t)m from   youngor04_all sa
+        where  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  back
+        ) a  inner join
+        (
+        select    back ,visitPath, min(t)n  from youngor04_all sa
+        where pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and  visitPath     in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group  by  back,visitPath
+        )b   on  a.back=b.back
+        ) c
+
+        group by  visitPath
+
+    </select>
+
+    <select id="getVisOpenExcel" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.util.Map">
+       <!-- select visitpath, count(back) num
+        from youngor04_all where appkey=#{appKey}
+        and  visitpath     in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and dt &lt;= #{endDate}
+        and dt &gt;= #{beginDate}
+        group by visitpath-->
+        select visitPath, count(back) num, sum(if(appHide=1,1,0)) exitNum
+        from youngor04_all where appkey=#{appKey}
+        and dt &lt;= #{endDate}
+        and dt &gt;= #{beginDate}
+        group by visitpath
+    </select>
+
+    <select id="getVisExitExcel" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO"  resultType="java.util.Map">
+        select  visitpath,count(1) exitNum from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        and appkey=#{appKey} and  appHide=1
+        and  visitPath     in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and dt &lt;= #{endDate}
+        and dt &gt;= #{beginDate}
+        group by visitPath
+
+    </select>
+
+
+    <select id="getParamName" parameterType="java.util.Map" resultType="java.util.Map">
+        select visitPath,  count(visitpath) visNum ,uniqExact(uu) userNum from  youngor04_all where     appkey=#{appKey} and pageShow=1
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and visitPath  GLOBAL in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        <foreach item="item1" index="index" collection="qstring" >
+            and q like concat('%',#{item1},'%')
+        </foreach>
+
+
+        group  by visitpath
+    </select>
+
+    <select id="getExitName" parameterType="java.util.Map" resultType="java.util.Map">
+        select visitPath, count(1) num from  youngor04_all where     appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and apphide=1
+        and visitPath  GLOBAL in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group  by visitPath
+    </select>
+
+    <select id="getPageParameterDataExcel" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        select  id ,name ,
+        uniqExact( if(pageShow = 1, uu, NULL)) userNum,
+        sum( if(pageShow = 1, 1, 0)) visitNum,
+        sum( if(appHide = 1, 1, 0)) exiNum
+        from
+        (select   b.id,b.name ,a.uu uu  ,a.visitPath, pageShow,appHide from (
+        select paramQ,
+        replace(paramQ,'"','') a,
+        replace(a,'{','') c,
+        replace(c,'}','') d,
+        replace(d,':','=') d1,
+        replace(d1,',','&amp;') kpi_list,
+        uu,
+        pageShow,appHide,
+        visitPath
+        from eto.youngor04_all ya  where q!='un'
+        and (pageShow=1 or appHide=1)
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        ) a  left join(
+
+        select  b.visitPath visitPath ,a.params,a.name,a.id from (
+        select  pid pid ,id,name,params  from  pathDetailInfo
+        where pid!='0' and is_del =0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by  updateTime desc
+        ) a left join pathDetailInfo b  on a.pid=b.id
+        where  b.pid='0' and b.is_del =0
+
+        ) b  on a.visitPath=b.visitPath and  a.kpi_list=b.params
+
+        ) a  group by  id,name
+
+    </select>
+
+    <select id="getPageParamUserListExcel" resultType="com.etocrm.sdk.entity.user.UserDatailVO" parameterType="com.etocrm.sdk.entity.page.PageParameterUserSeaVO">
+
+        select
+        s.uu userId,s.openId,s.unionId
+        from youngor04_all s
+        where appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and  visitpath=#{visitpath}
+        <if test="content!=null and content!=''">
+            openId like concat('%',#{content},'%')
+         </if>
+         ${sql}
+        group by  uu,openId ,unionId
+
+
+    </select>
+
+    <select id="getPageShow" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.util.HashMap">
+        select    back ,t  from youngor04_all sa
+        where pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="p!=null and p!=''">
+            and  visitpath=#{p}
+        </if>
+        group  by  back,t
+    </select>
+
+    <select id="getEntryShow" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.util.HashMap">
+        select    back ,min(t) t  from youngor04_all sa
+        where entryPage=1 and appShow =1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="p!=null and p!=''">
+            and  path=#{p}
+        </if>
+        group  by  back
+    </select>
+    <select id="getPageShowTime" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.util.HashMap">
+           select t1 from
+           (
+           select t,neighbor(t,1) t2,
+            if(t2==0,0, dateDiff('second', toDateTime(t/1000), toDateTime(t2/1000)))  t1
+
+            from youngor04_all s
+           where  appkey =#{appKey}
+           and  dt &lt;=  #{endDate}
+           and  dt &gt;=  #{beginDate}
+           and   back=#{back}
+           and t>=#{t}
+            order by  t
+            )  a where t=#{t}
+
+    </select>
+
+    <select id="getPageshowTotal" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.util.HashMap">
+    select b.visitPath visitpath,sum(t1) stopTime from
+    (
+    SELECT  back,t2,
+        if(t2==ty,0, neighbor( t2,1 ) ) f,
+        if(f==0,0, dateDiff('second', toDateTime(t2/1000), toDateTime(f/1000)))  t1
+    from
+         (
+          select back,max(t) ty,arrayJoin(groupArray(t)) t2
+          from (
+           select back,t from youngor04_all
+             where  appkey =#{appKey}
+               and  dt &lt;=  #{endDate}
+               and  dt &gt;=  #{beginDate}
+             order by t  asc
+          ) s2
+          group by  back
+          ) a
+        ) a
+        global left  join(
+            select visitPath ,back ,t,track from youngor04_all s2  where pageShow=1
+             and  appkey =#{appKey}
+             and  dt &lt;=  #{endDate}
+             and  dt &gt;=  #{beginDate}
+             and  visitPath!='un'
+             <if test="p!=null and p !=''">
+                 and  visitPath=#{p}
+             </if>
+        ) b  on  a.back=b.back  and a.t2=b.t
+        global left join (
+         select back,t  ,track from youngor04_all  where  pageHide=1
+          and  appkey =#{appKey}
+          and  dt &lt;=  #{endDate}
+          and  dt &gt;=  #{beginDate}
+        ) c  on a.back=c.back and a.f=c.t
+        where  c.track>b.track
+        group by  b.visitPath
+    </select>
+
+    <select id="getPageVisExecl" resultType="com.etocrm.sdk.entity.page.VisitPageExcel" parameterType="com.etocrm.sdk.entity.page.VisitVO">
+
+        select  id,visitPath,pathName,moduleName,pathTypeId,
+        visitNum,personNum,shareNum,avgExitRate
+        from (
+        select visitPath,  sum(if(pageShow=1,1,0))visitNum,
+        uniqExact(if(pageShow=1,uu,Null))personNum,
+        sum(if(pageShare =1,1,0))shareNum,
+        sum(if(appHide =1,1,0))exit,
+        round(divide(exit,visitNum),2) avgExitRate
+        from youngor04_all s2
+        where  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="visitPath!='' and visitPath!=null">
+            and visitPath like concat(#{visitPath},'%')
+        </if>
+        group by visitPath
+        ) a
+        left  join
+        (
+        select id,visitPath,pathName,moduleName,pathTypeId from pathDetailInfo
+        where pid='0' and visitPath!='un'
+        <if test="visitPath!='' and visitPath!=null">
+            and visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and pathTypeId =#{pathTypeId}
+        </if>
+        )b on a.visitPath=b.visitPath
+
+    </select>
+
+    <select id="getPageshowHomeTotal" parameterType="com.etocrm.sdk.entity.page.StopTimeVO" resultType="java.lang.Long">
+        select sum(t1) stopTime from
+        (
+        SELECT  back,t2,
+        if(t2==ty,0, neighbor( t2,1 ) ) f,
+        if(f==0,0, dateDiff('second', toDateTime(t2/1000), toDateTime(f/1000)))  t1
+        from
+        (
+        select back,max(t) ty,arrayJoin(groupArray(t)) t2
+        from (
+        select back,t from youngor04_all
+        where  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        order by t  asc
+        ) s2
+        group by  back
+        ) a
+        ) a
+        left  join(
+        select path ,back ,t from youngor04_all s2  where  appShow=1 and   entryPage=1
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="path!=null and path !=''">
+            and  path=#{path}
+        </if>
+        -- order by t limit 1  by back
+        ) b  on  a.back=b.back  and a.t2=b.t where path !='un'
+    </select>
+
+    <select id="getVis" resultType="com.etocrm.sdk.entity.page.PageListDownloadVO">
+          select visitpath visitPath from  youngor04_all s2  where visitPath!='un' group by visitpath
+    </select>
+
+    <select id="getPageParameterDataList1" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  id ,name ,
+        uniqExact( if(pageShow = 1, uu, NULL)) userNum,
+        sum( if(pageShow = 1, 1, 0)) visitNum,
+        sum( if(appHide = 1, 1, 0)) exiNum
+        from
+        (select  a.kpi_asc, b.id,b.name ,a.uu uu  ,t,back,visitPath, pageShow,appHide from (
+        select visitPath, groupArray(b) AS kpi_asc,q,
+        pageShow,appHide,uu  ,t ,back
+        from
+        (
+        select  visitPath,back,t,uu,q,
+        visitParamExtractString(json, 'k') AS k,
+        visitParamExtractString(json, 'v') AS v ,
+        concat(k,'=',v)b,
+        pageShow,appHide,back
+        from       (
+        select back,t,uu,q, visitpath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,pageShow,apphide,
+        arrayJoin(a1) AS json
+        from  youngor04_all where  appkey =#{appKey}  and (pageShow=1 or appHide=1)
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        ) a
+        )  a group  by  visitPath,back,t,uu,q,pageShow,appHide
+        ) a  right join(
+
+        select  b.visitPath visitPath ,a.params,a.name,a.id ,
+        assumeNotNull(params)params1,
+        splitByChar('&amp;',params1) params2
+        from (
+        select  pid pid ,id,name,params  from  pathDetailInfo
+        where pid!='0' and is_del =0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by  updateTime desc
+        limit #{limit},#{pageSize}
+
+        ) a left join pathDetailInfo b  on a.pid=b.id
+        where  b.pid='0' and b.is_del =0
+
+        ) b  on a.visitpath=b.visitPath  where  hasAll(b.params2,a.kpi_asc)
+
+        ) a  group by  id,name,visitPath
+    </select>
+
+    <select id="getPageParameterDataExcel1" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        select  id ,name ,
+        uniqExact( if(pageShow = 1, uu, NULL)) userNum,
+        sum( if(pageShow = 1, 1, 0)) visitNum,
+        sum( if(appHide = 1, 1, 0)) exiNum
+        from
+        (select  a.kpi_asc, b.id,b.name ,a.uu uu  ,t,back,visitPath, pageShow,appHide from (
+        select visitPath, groupArray(b) AS kpi_asc,q,
+        pageShow,appHide,uu  ,t ,back
+        from
+        (
+        select  visitPath,back,t,uu,q,
+        visitParamExtractString(json, 'k') AS k,
+        visitParamExtractString(json, 'v') AS v ,
+        concat(k,'=',v)b,
+        pageShow,appHide,back
+        from       (
+        select back,t,uu,q, visitPath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,pageShow,apphide,
+        arrayJoin(a1) AS json
+        from  youngor04_all where  appkey =#{appKey}  and (pageShow=1 or apphide=1)
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        ) a
+        )  a group  by  visitPath,back,t,uu,q,pageShow,appHide
+        ) a  right join(
+
+        select  b.visitPath visitPath ,a.params,a.name,a.id ,
+        assumeNotNull(params)params1,
+        splitByChar('&amp;',params1) params2
+        from (
+        select  pid pid ,id,name,params  from  pathDetailInfo
+        where pid!='0' and is_del =0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by  updateTime desc
+        ) a left join pathDetailInfo b  on a.pid=b.id
+        where  b.pid='0' and b.is_del =0
+
+        ) b  on a.visitPath=b.visitPath  where  hasAll(b.params2,a.kpi_asc)
+
+        ) a  group by  id,name,visitPath
+    </select>
+
+    <select id="getParamOne" parameterType="com.etocrm.sdk.entity.page.PageParameterSearchVO" resultType="java.util.LinkedHashMap">
+      select a.visitPath visitPath ,b.params  params from (select id,visitPath from eto.pathDetailInfo pdi where pid='0'
+       and id=#{pathId}
+      )a
+      left join (
+           select id,pid,params from eto.pathDetailInfo pdi where pid!='0'
+           and pid=#{pathId} and   id=#{id}
+     ) b on a.id=b.pid
+     limit 1
+
+    </select>
+    <select id="getSdkParam" parameterType="com.etocrm.sdk.entity.page.PageParameterSearchVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+      SELECT   uu userId,  unionId ,openId  from youngor04_all
+      where   appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and visitPath=#{visitPath}
+        and pageShow=1
+       <if test="sql !=null and sql!=''">
+            ${sql}
+       </if>
+        <if test="content!='' and content!=null">
+          and   openId like concat('%',#{content},'%')
+
+        </if>
+        group by uu,unionId,openId
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getSdkParamCount" parameterType="com.etocrm.sdk.entity.page.PageParameterSearchVO" resultType="java.lang.Integer">
+        select count(1) from (
+        SELECT uu userId, unionId ,openId from youngor04_all
+        where appkey =#{appKey}
+        and dt &lt;= #{endDate}
+        and dt &gt;= #{beginDate}
+        and visitpath=#{visitPath}
+        and pageShow=1
+        <if test="sql !=null and sql!=''">
+            ${sql}
+        </if>
+        <if test="content!='' and content!=null">
+            and openId like concat('%',#{content},'%')
+
+        </if>
+        group by uu,unionId,openId
+        ) a
+    </select>
+
+    <select id="getPageParameterDataList3" resultType="com.etocrm.sdk.entity.page.ParamDataRepVO" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        SELECT
+        id ,name ,visitNum,personNum
+          from (
+       select   groupArray(kv) AS kpi_asc  ,
+        arrayStringConcat(kpi_asc, ' &amp;') AS kpi_lis,
+        uniqExact(back,track) visitNum ,
+         uniqExact(uu)  personNum
+        from (
+                select back,track,uu,q, visitpath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,
+                arrayJoin(a1) AS json,
+               visitParamExtractString(json, 'k') AS k,
+                visitParamExtractString(json, 'v') AS v ,
+                concat(k,'=',v)kv
+                from  youngor04_all where
+                  visitpath=#{visitpath}
+                  and   appkey =#{appKey}
+                  and  dt &lt;=  #{endDate}
+                  and  dt &gt;=  #{beginDate}
+                  and  pageShow=1
+                ) group by back,track ,uu
+
+        ) a right join (
+            select  pid pid ,id,name,params  from  pathDetailInfo
+            where pid!='0' and is_del =0
+            <if test="name!=null and name!=''">
+                and  name=#{name}
+            </if>
+            order by  updateTime desc
+            limit #{limit},#{pageSize}
+        )b  on  kpi_lis=b.params
+
+    </select>
+
+    <select id="getPageParameterDataList4" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.page.ParamDataSearchVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        SELECT
+        id  ,exit
+        from (
+        select   groupArray(kv) AS kpi_asc  ,
+        arrayStringConcat(kpi_asc, ' &amp;') AS kpi_lis,
+        uniqExact(back,track) exit
+        from (
+        select back,track,uu,q, visitpath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,
+        arrayJoin(a1) AS json,
+        visitParamExtractString(json, 'k') AS k,
+        visitParamExtractString(json, 'v') AS v ,
+        concat(k,'=',v)kv
+        from  youngor04_all where
+        visitpath=#{visitpath}
+        and   appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and  apphide=1
+        ) group by back,track ,uu
+
+        ) a right join (
+        select  pid pid ,id,name,params  from  pathDetailInfo
+        where pid!='0' and is_del =0
+        <if test="name!=null and name!=''">
+            and  name=#{name}
+        </if>
+        order by  updateTime desc
+        limit #{limit},#{pageSize}
+        )b  on  kpi_lis=b.params
+
+    </select>
+
+    <select id="getPageTime" parameterType="com.etocrm.sdk.entity.page.PageAccessVo" resultType="java.lang.Long">
+        select sum(t1) from (select
+        back, max(t)m,min(t)n ,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000)) t1
+       from (
+         select back,t from youngor04_all where   tv ='page'and tl in ('show','hide')
+          and   appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+     )  a group by  back) a
+    </select>
+
+    <select id="getPageAccVisList" resultType="com.etocrm.sdk.entity.page.HomeVO" parameterType="com.etocrm.sdk.entity.page.VisitPageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  b.path visitPath,a.visitNum visitNum, a.uu personNum ,b.entryNum entryNum ,
+         c.id id,c.pathName pathName,c.moduleName moduleName
+         from
+        (
+        select
+        path,count(1)visitNum,uniqExact(uu) uu
+        from
+        youngor04_all
+        where appkey=#{appKey} and pageShow=1  and path!='un'
+        <if test="visitPath!='' and visitPath!=null">
+            and  path like concat(#{visitPath},'%')
+        </if>
+        and dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        group by path
+        )  a inner join
+        (
+        select path, count(1) entryNum from  youngor04_all
+        where appkey=#{appKey} and appShow=1 and entryPage=1
+        and path!='un'
+        and dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        <if test="visitPath!='' and visitPath!=null">
+            and  path like concat(#{visitPath},'%')
+        </if>  group by path order by  entryNum desc
+        limit #{limit}, #{pageSize}
+        ) b on  a.path=b.path
+        left join
+        (select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if> ) c   on b.path=c.visitPath
+    </select>
+
+    <select id="getPageAccVisCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.page.VisitPageVO">
+       select  count(1) from  (
+        select path, count(1) entryNum from  youngor04_all
+        where appkey=#{appKey} and appShow=1 and entryPage=1
+        and path!='un'
+        and dt &lt;= #{endDate}
+        and dt>= #{beginDate}
+        <if test="visitPath!='' and visitPath!=null">
+            and  path like concat(#{visitPath},'%')
+        </if>  group by path order by  entryNum desc
+        ) a left join
+        (select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if> ) c   on a.path=c.visitPath
+    </select>
+
+    <select id="getPageVistListNew" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="com.etocrm.sdk.entity.page.VisitTotalPVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+         select
+        visitPath ,personNum,visitNum,avgExitRate,shareNum,
+        c.id id,c.pathName pathName,c.moduleName moduleName
+        from (select visitPath visitPath ,uniqExact(if(pageShow=1,uu,Null)) personNum,sum(if(pageShow=1,1,0)) visitNum,
+        sum(if(appHide=1,1,0)) avgExitRate,
+        sum(if(pageShare=1,1,0)) shareNum
+        from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        and appkey=#{appKey}   and visitPath!='un'
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        group by  visitPath
+        limit #{limit},#{pageSize} ) a left join (
+        select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if>
+        )  c  on  a.visitPath=c.visitPath
+    </select>
+    <select id="getPageVistListCount" parameterType="com.etocrm.sdk.entity.page.VisitPageVODTO" resultType="java.lang.Integer">
+        select count(1) from (select visitPath visitPath ,uniqExact(if(pageShow=1,uu,Null)) personNum,sum(if(pageShow=1,1,0)) visitNum,
+        sum(if(appHide=1,1,0)) avgExitRate,
+        sum(if(pageShare=1,1,0)) shareNum
+        from  youngor04_all where dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        and appkey=#{appKey}   and visitPath!='un'
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        group by  visitPath
+       ) a left join (
+        select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if>
+        )  c  on  a.visitPath=c.visitPath
+    </select>
+    <select id="getPageHomeExcelNew" resultType="com.etocrm.sdk.entity.page.HomePageExcel" parameterType="com.etocrm.sdk.entity.page.VisitVO">
+        select  b.path visitPath,a.visitNum visitNum, a.uu personNum ,b.entryNum entryNum ,
+        c.id id,c.pathName pathName,c.moduleName moduleName
+        from
+        (
+        select
+        path,count(1)visitNum,uniqExact(uu) uu
+        from
+        youngor04_all
+        where appkey=#{appKey} and pageShow=1  and path!='un'
+        <if test="visitPath!='' and visitPath!=null">
+            and  path like concat(#{visitPath},'%')
+        </if>
+        and dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        group by path
+        )  a inner join
+        (
+        select path, count(1) entryNum from  youngor04_all
+        where appkey=#{appKey} and appShow=1 and entryPage=1
+        and path!='un'
+        and dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        <if test="visitPath!='' and visitPath!=null">
+            and  path like concat(#{visitPath},'%')
+        </if>  group by path order by  entryNum desc
+        ) b on  a.path=b.path
+        left join
+        (select id,visitPath,pathName,moduleName,pathTypeId  from  pathDetailInfo
+        where  pid='0' and notEmpty(visitPath)
+        <if test="visitPath!='' and visitPath!=null">
+            and  visitPath like concat(#{visitPath},'%')
+        </if>
+        <if test="moduleName!='' and moduleName!=null">
+            and  moduleName like concat(#{moduleName},'%')
+        </if>
+        <if test="pathTypeId!=null">
+            and  pathTypeId =#{pathTypeId}
+        </if> ) c   on b.path=c.visitPath
+    </select>
+
+    <select id="getEntryTime" parameterType="com.etocrm.sdk.entity.page.VisitVO" resultType="java.util.HashMap">
+        select path ,
+        sum(c) stopTime
+        from (
+        select tl,path,neighbor(t,1) a,
+        dateDiff('second', toDateTime(t/1000), toDateTime(a/1000))c
+        from (
+        select  back,uu,t,tl,path from
+         youngor04_all ya  where tv='page' and tl in ('show','hide')
+        and dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        and appkey=#{appKey}
+        order by  back ,track )
+        ) a where  tl='show' and path!='un'  and c>0
+        group by path
+    </select>
+
+
+</mapper>

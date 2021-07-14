@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.TotalMapper">
+    <select id="getTotal" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select
+          appkey,
+          count(1) pv,
+          uniqExact(uu) uv
+        from  youngor04_all
+        where  pageShow=1
+         and  dt  = #{dt}
+         GROUP  by appkey
+    </select>
+
+    <select id="getOpenNum" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+      select
+        appkey,
+        uniqExact( back) openNum,
+        sum(if(appHide =1,1,0)) exitpage
+       from  youngor04_all
+         where  dt  = #{dt}
+         GROUP  by appkey
+    </select>
+
+    <select id="getTime" parameterType="java.util.Map" resultType="java.lang.Long">
+        select  sum(t1)  avgStopTime from (
+        select    max(`t`) m,min(`t`) n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all where appkey =#{appKey}
+        and  dt = #{dt}
+        group by  back
+        ) as f
+    </select>
+
+    <!-- 跳出页-->
+    <select id="getBounceRate" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select     appkey,count(1)  bounceNum from
+            (
+            SELECT   appkey ,back FROM  youngor04_all s  where     pageShow=1
+             and  dt=#{dt}  group by appkey ,back having count(back)=1
+            )   k  group  by appkey
+    </select>
+
+    <select id="getUv" resultType="java.lang.Integer" parameterType="java.util.HashMap">
+        select
+          uniqExact(uu) uv
+        from  youngor04_all
+        where  pageShow=1 and appkey=#{appKey}
+         and  dt &lt;= #{dt}
+         and  dt>#{begDt}
+    </select>
+
+    <!--新用户-->
+    <select id="getNewUser" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select appkey,count(uu) newUser
+        from(
+        select uu,appkey,
+        min(dt) as dates
+        from (
+        select uu,appkey,
+        dt
+        from youngor04_all where appShow =1
+        and dt &lt;= #{dt}
+        ORDER BY t asc
+        ) a
+        group by uu,appkey  )  b where
+        dates=#{dt}
+        group by appkey
+    </select>
+
+    <select id="getUserShare" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+      select appkey,count(1) shareNum ,uniqExact(uu) shareUser from  youngor04_all where pageShare=1
+        and  dt  = #{dt}
+         group by appkey
+    </select>
+    <select id="getActive" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        SELECT appkey,  uniqExact(uu) num from youngor04_all s where     dt &lt;= #{dt}
+         and  dt> #{begDt}
+         group by appkey
+    </select>
+
+    <select id="getNewmember" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        SELECT appkey,  uniqExact(uu) num from youngor04_all s where  isNewMember=1 and     dt &lt;= #{dt}
+         and  dt> #{begDt}
+         group by appkey
+    </select>
+
+    <select id="getTotalAll" resultType="com.etocrm.sdk.entity.total.ToTalPO" parameterType="java.util.HashMap">
+        select
+        appkey,
+        uniqExact( back) openNum,
+        sum(if(appHide =1,1,0)) exit,
+        count(if(a.pageShow = 1 , a.uu, NULL)) pv,
+        uniqExact(if(a.pageShow = 1 , a.uu, NULL)) uv,
+        count(if(a.pageShare = 1 , a.uu, NULL)) shareNum,
+        uniqExact(if(a.pageShare = 1 , a.uu, NULL)) shareUser,
+        uniqExact(if(a.isNewMember = 1 , a.uu, NULL)) newmember
+       from  youngor04_all a where  dt  = #{dt}
+         GROUP  by appkey
+    </select>
+
+    <select id="getTotalDateAll" resultType="com.etocrm.sdk.entity.total.ToTalPO" parameterType="java.util.HashMap">
+        select
+        appkey,
+        dt,
+        uniqExact( back) openNum,
+        sum(if(appHide =1,1,0)) exit,
+        count(if(a.pageShow = 1 , a.uu, NULL)) pv,
+        uniqExact(if(a.pageShow = 1 , a.uu, NULL)) uv,
+        count(if(a.pageShare = 1 , a.uu, NULL)) shareNum,
+        uniqExact(if(a.pageShare = 1 , a.uu, NULL)) shareUser,
+        uniqExact(if(a.isNewMember = 1 , a.uu, NULL)) newmember
+       from  youngor04_all a
+        where  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+         GROUP  by appkey,dt
+    </select>
+
+    <select id="getBounceDateRate" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select     appkey,dt,concat(appkey,'_',dt) appkey_dt,   count(1)  bounceNum from
+            (
+            SELECT   appkey ,back,dt FROM  youngor04_all s  where     pageShow=1
+            and dt &lt;=  #{endDate}
+           and  dt &gt;=  #{beginDate}  group by appkey ,back,dt having count(back)=1
+            )   k  group  by appkey,dt
+    </select>
+
+    <select id="getNewUserDate" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        select appkey,dt,concat(appkey,'_',dt) appkey_dt,count(uu) newUser
+        from (
+        select uu,appkey,
+        dt
+        from youngor04_all where appShow =1
+         and dt &lt;=  #{endDate}
+        ORDER BY t asc limit 1 by uu
+        ) a where   dt &gt;=  #{beginDate}
+        group by dt,appkey
+    </select>
+
+    <select id="getDateActive" resultType="java.lang.Integer" parameterType="java.util.HashMap">
+        SELECT   uniqExact(uu) num from youngor04_all s where     dt &lt;= #{dt}
+         and  dt> #{begDt} and    appkey=#{appKey}
+
+    </select>
+
+
+
+
+
+</mapper>

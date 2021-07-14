@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.QrCodeGroupMapper">
+
+    <insert id="add" parameterType="com.etocrm.sdk.entity.Qr.AddQrGroupType">
+    INSERT INTO qr_code_group
+      (id, groupName, remark, createTime, updateTime,
+      `type`, appSecret, codeType, codeWidth, page, qrGroupId, qrName, scene,appId)
+        VALUES(replaceAll(toString(generateUUIDv4()), '-', ''),
+         #{groupName},  #{remark}, now(), now(),
+        #{type}, #{appSecret}, #{codeType}, #{codeWidth}, #{page}, #{qrGroupId}, #{qrName}, #{scene},
+        #{appId})
+
+    </insert>
+    <update id="editQrGroup" parameterType="com.etocrm.sdk.entity.Qr.AddQrGroupType">
+        alter table   qr_code_group update
+        <if test="groupName!=null and groupName!=''">
+            groupName=#{groupName},
+        </if>
+        <if test="remark!=null and remark!=''">
+            remark=#{remark},
+        </if>
+        updateTime=now(),
+        `type`=#{type},
+        <if test="appSecret!=null and appSecret!=''">
+            appSecret=#{appSecret},
+        </if>
+        <if test="codeType!=null and codeType!=''">
+            codeType=#{codeType},
+        </if>
+        <if test="codeWidth!=null and codeWidth!=''">
+            codeWidth=#{codeWidth},
+        </if>
+        <if test="page!=null and page!=''">
+            page=#{page},
+        </if>
+       <if test="qrGroupId!=null and qrGroupId!=''">
+           qrGroupId=#{qrGroupId},
+       </if>
+        <if test="qrName!=null and qrName!=''">
+            qrName=#{qrName},
+        </if>
+        <if test="scene!=null and scene!=''">
+            scene=#{scene},
+        </if>
+        appId=#{appId}
+        where id=#{id} and type=#{type}
+    </update>
+
+   <!-- <delete id="deleteQrGroup" parameterType="com.etocrm.sdk.entity.Qr.DeleteQrGroup">
+        alter  table  qr_code_group delete
+        where id=#{id} and appId=#{appId}
+    </delete>-->
+
+    <update id="deleteQrGroup" parameterType="com.etocrm.sdk.entity.Qr.DeleteQrGroup">
+        alter  table  qr_code_group update
+        is_del=1
+        where id=#{id} and appId=#{appId}
+    </update>
+
+    <select id="getQrGroupListPagging" resultType="com.etocrm.sdk.entity.Qr.QrGroupRepVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select id, groupName, remark, createTime, updateTime, `type`, appSecret, codeType, codeWidth, page, qrGroupId, qrName, scene,appId
+        from   qr_code_group  where  type=#{type}  and is_del=0
+        <if test="value!=null and value!='' ">
+            and  groupName=#{value}
+        </if>
+        <if test="appId!=null and appId!='' ">
+            and  appId=#{appId}
+        </if>
+        order by  createTime desc,updateTime desc
+        limit #{limit}, #{pageSize}
+    </select>
+
+    <select id="getQrGroupCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.Qr.QueryGroupPageVO">
+     select  count(1)
+       from   qr_code_group  where  type=#{type} and is_del=0
+       <if test="value!=null and value!='' ">
+            and  groupName=#{value}
+       </if>
+        <if test="appId!=null and appId!='' ">
+            and  appId=#{appId}
+        </if>
+    </select>
+
+    <select id="downLoadQrGroupListPagging" resultType="com.etocrm.sdk.entity.Qr.QrGroupRepVO" parameterType="com.etocrm.sdk.entity.Qr.AddQrGroupType">
+        select id, groupName,toString(createTime) createTime
+        from   qr_code_group  where  type=#{type} and is_del=0
+        <if test="groupName!=null and groupName!='' ">
+            and  groupName=#{groupName}
+        </if>
+        <if test="appId!=null and appId!='' ">
+            and  appId=#{appId}
+        </if>
+        order by  createTime desc,updateTime desc
+    </select>
+</mapper>

@@ -38,5 +38,27 @@ public interface PageService {
 
     Result getVisitPageList(VisitPageVO vo);
 
+    Result getVisitModulePage(ModelVO vo);
 
+    Result getVisitPage(PageAccessVo vo);
+
+    List<VisitPageResVO> downLoadVisitPageList(VisitVO vo);
+
+    List<HomePageExcel> downLoadHomePageList(HomePageVO vo);
+
+    Result getHomePageList(VisitPageVO vo);
+
+    Result getPageVisitHabitDepth(PageVO vo);
+
+    List<PageDepthVO>downLoadPageVisitHabitDepth(PageVO vo);
+
+    Result getPageVisitHabitTime(PageVO vo);
+
+    List<PageDepthVO> downLoadPageVisitHabitTime(PageVO vo);
+
+    List<PageDepthVO> downLoadPageVisitHabitFrequency(PageVO vo);
+
+    Result getPagesPathFirst(PageVO vo);
+
+    Result getPagePathNode(PageNodeVO vo);
 }

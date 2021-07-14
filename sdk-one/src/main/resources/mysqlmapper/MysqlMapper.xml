@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.mysqldao.MysqlMapper">
+
+    <insert id="insertTotal" parameterType="com.etocrm.sdk.entity.total.ToTalPO">
+        insert ignore into totalData (
+        appkey,
+        dt,
+        newUser,
+        pv,
+        openNum,
+        avgStopTime,
+        bounce,
+        `exit`,
+         uv,
+         shareNum,
+         shareUser,
+         dau,
+         wau,
+         mau,
+         newmember
+        )
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.appkey},
+            #{item.dt},
+            #{item.newUser},
+            #{item.pv},
+            #{item.openNum},
+            #{item.avgStopTime},
+            #{item.bounce},
+            #{item.exit},
+            #{item.uv},
+            #{item.shareNum},
+            #{item.shareUser},
+            #{item.dau},
+            #{item.wau},
+            #{item.mau},
+            #{item.newmember}
+            )
+        </foreach>
+    </insert>
+
+    <select id="getYesList" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.total.ToTalPO">
+<!--       <if test="type==1">-->
+<!--       select  newUser, pv,openNum,avgStopTime, bounce,`exit`,uv-->
+<!--        from  totalData-->
+<!--       where  appkey=#{appKey}-->
+<!--       and dt = #{endDate}-->
+<!--       </if>-->
+<!--        <if test="type!=1">-->
+           select sum(newUser)newUser,sum(pv)pv ,sum(openNum)openNum,sum(avgStopTime) avgStopTime,
+            sum(bounce)bounce ,sum(`exit`) `exit`,sum(uv) uv from  totalData
+            where  appkey=#{appKey}
+            and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+<!--       </if>-->
+    </select>
+
+    <!--数据看板-->
+    <select id="getDataList" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.util.HashMap">
+        select   appkey,dt,sum(newUser)newUser,sum(pv)pv,sum(openNum) openNum,sum(uv)uv,sum(avgStopTime) avgStopTime,sum(`exit`) `exit`,
+          sum(newmember) newmember  from   totalData
+        where  appkey    in
+        <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+            #{item.appKey}
+        </foreach>
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  dt,appkey  order by  dt  asc
+
+    </select>
+
+
+    <select id="getBindDataList" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="com.etocrm.sdk.entity.total.ToTalPO">
+
+            select sum(newUser)newUser,sum(pv)pv ,sum(openNum)openNum,sum(avgStopTime) avgStopTime,
+            sum(bounce)bounce ,sum(`exit`) `exit`,sum(newmember) newmember  from  totalData
+            where  appkey in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+            and dt &lt;= #{endDate}
+            and dt>=#{beginDate}
+    </select>
+    <select id="getYestDataList" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="com.etocrm.sdk.entity.data.YestDayRepVO">
+        select   appkey appKey ,dt,newUser newUserNum ,pv visitNum,openNum openNum,uv userNum,avgStopTime, `exit` exitRate  from   totalData
+        where   dt = #{endDate}
+
+    </select>
+    <select id="getDateList" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.user.UserDateRepVO">
+        select   dt date,sum(newUser) newUserNum,sum(pv) visitNum,sum(openNum) openNum,sum(uv)uv,SEC_TO_TIME  (sum( avgStopTime )  div sum(openNum))  avgStopTime,
+        FORMAT(sum( `bounce` )  /sum(openNum),2) exitRate  from   totalData
+        where  appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by  dt,appkey  order by  dt  asc
+    </select>
+
+    <select id="getActiveList" parameterType="com.etocrm.sdk.entity.user.UserPageVO" resultType="com.etocrm.sdk.entity.user.UserActiveRepVO">
+        select   dt curDate, dau ,wau,mau,
+         FORMAT(dau  /wau,2) dwRate,
+         FORMAT(dau  /mau,2) dmRate
+         from totalData
+        where  appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+         order by  dt  desc
+    </select>
+
+    <select id="getActivieCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.user.UserPageVO"  >
+          select   count(1)
+         from totalData
+        where  appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getActiviePage" resultType="com.etocrm.sdk.entity.user.UserActiveRepVO" parameterType="com.etocrm.sdk.entity.user.UserPageVO"  >
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+      select   dt curDate, dau ,wau,mau,
+         FORMAT(dau  /wau,2) dwRate,
+         FORMAT(dau  /mau,2) dmRate
+         from totalData
+        where  appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+         order by  dt  desc
+        limit #{limit}, #{pageSize}
+
+    </select>
+
+    <select id="getNewMember" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="com.etocrm.sdk.entity.total.ToTalPO">
+            select sum(newmember) newmember  from  totalData
+            where  appkey in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+    </select>
+
+    <select id="getUserStaticData" resultType="java.util.Map"  parameterType="com.etocrm.sdk.entity.user.UserPageVO"  >
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+           select  dt,newUser,pv,uv,
+            openNum,
+            avgStopTime,
+            bounce
+            from  totalData where  appkey=#{appKey}
+            and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+          limit #{limit}, #{pageSize}
+    </select>
+
+    <select id="getUserStaticDataCount" resultType="java.lang.Integer"  parameterType="com.etocrm.sdk.entity.user.UserPageVO"  >
+        select  count(1)
+        from  totalData where  appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mapper>

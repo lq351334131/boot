@@ -184,5 +184,137 @@ public class PageController {
         return  pageService.getVisitPageList(vo);
     }
 
+    @ApiOperation(value = "页面访页--入口页--列表", notes = "")
+    @RequestMapping(value = "/getHomePageList", method = RequestMethod.POST)
+    @ResponseBody
+    public Result getHomePageList(@RequestBody VisitPageVO  vo ) {
+        return  pageService.getHomePageList(vo);
+    }
+
+    @ApiOperation(value = "页面访页--所属模块--列表", notes = "")
+    @RequestMapping(value = "/getVisitModulePage", method = RequestMethod.POST)
+    @ResponseBody
+    public Result getVisitModulePage(@RequestBody ModelVO  vo ) {
+        return  pageService.getVisitModulePage(vo);
+    }
+
+    @RequestMapping(value = "/getVisitPage", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    public Result getVisitPage(@RequestBody PageAccessVo vo) {
+        return pageService.getVisitPage(vo);
+    }
+
+    @RequestMapping(value = "/downLoadVisitPageList", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ResponseBody
+    @ApiOperation(value = "页面访问列表下载", notes = "")
+    public void downLoadVisitPageList(HttpServletResponse response, @RequestBody VisitVO vo)  {
+        try {
+            List<VisitPageResVO> list = pageService.downLoadVisitPageList(vo);
+            ExcelUtils.writeExcel(response, list, "页面访问受访列表", VisitPageResVO.class);
+        }catch (Exception e){
+            log.error("{}",e.getMessage());
+        }
+    }
+
+    @RequestMapping(value = "/downLoadHomePageList", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ResponseBody
+    @ApiOperation(value = "页面访问列表下载", notes = "")
+    public void downLoadHomePageList(HttpServletResponse response, @RequestBody HomePageVO vo)  {
+        try {
+            List<HomePageExcel> list = pageService.downLoadHomePageList(vo);
+            ExcelUtils.writeExcel(response, list, "页面访问人口列表", HomePageExcel.class);
+        }catch (Exception e){
+            log.error("{}",e.getMessage());
+        }
+    }
+
+    /**
+     * 
+     * @Description 使用习惯-访问深度
+     * @author xing.liu
+     * @date 2020/9/18
+     **/
+    @RequestMapping(value = "/getPageVisitHabitDepth", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "使用习惯", notes = "")
+    public Result getPageVisitHabitDepth(@RequestBody PageVO vo) {
+        return pageService.getPageVisitHabitDepth(vo);
+    }
+
+    @RequestMapping(value = "/downLoadPageVisitHabitDepth", method = RequestMethod.GET, produces = {"application/json;charset=UTF-8"})
+    @ResponseBody
+    @ApiOperation(value = "使用习惯-深度页面下载", notes = "")
+    public void downLoadPageVisitHabitDepth(HttpServletResponse response, @RequestBody PageVO vo)  {
+        try {
+            List<PageDepthVO> list = pageService.downLoadPageVisitHabitDepth(vo);
+            ExcelUtils.writeExcel(response, list, "深度页面列表", PageDepthVO.class);
+        }catch (Exception e){
+            log.error("{}",e.getMessage());
+        }
+    }
+
+
+    /**
+     *
+     * @Description 使用习惯-使用时长
+     * @author xing.liu
+     * @date 2020/9/18
+     **/
+    @RequestMapping(value = "/getPageVisitHabitTime", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "使用习惯-使用时长", notes = "")
+    public Result getPageVisitHabitTime(@RequestBody PageVO vo) {
+        return pageService.getPageVisitHabitTime(vo);
+    }
+
+    /**
+     *
+     * @Description 使用习惯-使用时长
+     * @author xing.liu
+     * @date 2020/9/18
+     **/
+    @RequestMapping(value = "/downLoadPageVisitHabitTime", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "使用习惯-使用时长", notes = "")
+    public void downLoadPageVisitHabitTime(HttpServletResponse response,@RequestBody PageVO vo) {
+        try {
+            List<PageDepthVO> list = pageService.downLoadPageVisitHabitTime(vo);
+            ExcelUtils.writeExcel(response, list, "深度页面列表", PageDepthVO.class);
+        }catch (Exception e){
+            log.error("{}",e.getMessage());
+        }
+    }
+
+    @RequestMapping(value = "/downLoadPageVisitHabitFrequency", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "使用习惯-使用频率", notes = "")
+    public void downLoadPageVisitHabitFrequency(HttpServletResponse response,@RequestBody PageVO vo) {
+        try {
+            List<PageDepthVO> list = pageService.downLoadPageVisitHabitFrequency(vo);
+            ExcelUtils.writeExcel(response, list, "使用频率列表", PageDepthVO.class);
+        }catch (Exception e){
+            log.error("{}",e.getMessage());
+        }
+    }
+
+    @RequestMapping(value = "/getPagesPathFirst", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "页面路径--获取页面路径根节点列表", notes = "")
+    public Result getPagesPathFirst(@RequestBody PageVO vo) {
+        return pageService.getPagesPathFirst(vo);
+    }
+
+    /**
+     * @Description:没有完成-需求
+     * @author xing.liu
+     * @date 2020/10/13
+     **/
+    @RequestMapping(value = "/getPagePathNode", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
+    @ApiOperation(value = "页面路径--获取页面路径", notes = "")
+    public Result getPagePathNode(@RequestBody PageNodeVO vo) {
+        return pageService.getPagePathNode(vo);
+    }
+
+
+
+
+
+
+
+
 
 }

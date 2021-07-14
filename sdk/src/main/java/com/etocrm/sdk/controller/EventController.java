@@ -3,7 +3,7 @@ package com.etocrm.sdk.controller;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.etocrm.sdk.base.Result;
-import com.etocrm.sdk.entity.EventVO.*;
+import com.etocrm.sdk.entity.eventVO.*;
 import com.etocrm.sdk.service.EventService;
 import com.etocrm.sdk.util.ExcelUtils;
 import io.swagger.annotations.ApiOperation;
@@ -20,7 +20,7 @@ public class EventController {
     @Autowired
     private EventService eventService;
 
-    @RequestMapping(value = "/download", method = RequestMethod.GET, produces = {"application/json;charset=UTF-8"})
+    @RequestMapping(value = "/download", method = RequestMethod.POST, produces = {"application/json;charset=UTF-8"})
     @ResponseBody
     @ApiOperation(value = "事件下载", notes = "")
     public void getexcel(HttpServletResponse response,@RequestBody DownLoadExcel vo) throws Exception {
@@ -135,6 +135,5 @@ public class EventController {
     public   Result  delEvent(@RequestParam String id ){
         return  eventService.delEvent(id);
     }
-
 
 }

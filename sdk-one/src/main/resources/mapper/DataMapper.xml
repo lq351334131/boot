@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.DataMapper">
+
+    <!--新用户数-->
+    <select id="getNewUser" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+               select  count(uu) num         from(
+               select uu,  min(dt) as dt         from (
+               select uu,appkey,         dt
+               from youngor04_all where appShow =1
+               and  appkey  GLOBAL in
+               <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                   #{item.appKey}
+               </foreach>
+               and  dt &lt;= #{endDate}
+               ORDER BY t asc         ) a
+               group by uu  ) a
+               where  dt &lt;= #{endDate}
+               and  dt &gt;=  #{beginDate}
+
+        <!--<if test="typeId==1">
+          &lt;!&ndash;去重&ndash;&gt;
+            select  if(uniqExact(unionId)=0,0, uniqExact(unionId) ) num from
+                (
+                select unionId  from   sdk0127_all s  where isfirstday =1 and appkey GLOBAL in
+                <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                    #{item.appKey}
+                </foreach>
+                and  dt &lt;= #{endDate}
+                and  dt &gt;=  #{beginDate}
+                group  by  openId,unionId
+              ) f
+        </if>-->
+
+
+    </select>
+
+    <!--访问次数-->
+    <select id="getVisNum" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.util.HashMap">
+             select count(visitPath) visNum ,uniqExact(uu) accUserNum from  youngor04_all   where
+              pageShow=1
+              and appkey GLOBAL  in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+             and  dt &lt;= #{endDate}
+             and  dt &gt;=  #{beginDate}
+        <!--<if test="typeId==1">
+            select  if(uniqExact(unionId)=0,0, uniqExact(unionId))  accUserNum, sum(num) visNum  from
+            (
+            select openId,unionId ,count(1) num from   youngor04_all s  where  appkey  GLOBAL in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+            and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group  by  openId,unionId
+            ) f
+        </if>-->
+
+
+    </select>
+
+    <!-- 打开参数-->
+    <select id="getOpen" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+             select uniqExact(back) num  from  youngor04_all   where dt &lt;= #{endDate}
+              and  dt &gt;=  #{beginDate}
+              and appkey GLOBAL  in
+                 <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                    #{item.appKey}
+                </foreach>
+
+    </select>
+
+    <!-- 均停留时长=小程序停留总时长/打开次数-->
+    <select id="getStopTime" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+        select  sum(t1) from (
+        select    max(`t`) m,min(`t`) n,
+          dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+            from  youngor04_all where
+             appkey  GLOBAL  in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+            and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+
+             group by  back
+        ) as f
+
+    </select>
+
+    <!-- 退出页-->
+<!--    <select id="getExit" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">-->
+<!--             select sum(m_apptime) avgtime num  from  sdk0127_all   where   m_openapp=1-->
+<!--                and  appkey  GLOBAL  in-->
+<!--                <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">-->
+<!--                    #{item.appkey}-->
+<!--                </foreach>-->
+<!--             and  dt &lt;= #{endDate}-->
+<!--             and  dt &gt;=  #{beginDate}-->
+<!--    </select>-->
+
+    <!--新注册用户-->
+    <!-- <select id="getNewRegister" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+             select count(num) from (
+              select count(o) num  from  sdk0127_all   where   tv='page'  and  tl='show' and m_newpage=1  and  isfirstday=1
+             and  k  GLOBAL  in
+             <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                 #{item.appkey}
+             </foreach>
+              and  dt &lt;= #{endDate}
+              and  dt &gt;=  #{beginDate}
+             group  by o
+         ) a
+     </select>-->
+
+    <!--累计会员数-->
+    <!--<select id="getOldReg" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+      select uniqExact(o) num  from  sdk0127_all   where  tv='page'  and  tl='show'
+       and  k  GLOBAL  in
+       <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+           #{item.appkey}
+       </foreach>
+   </select>-->
+
+    <select id="getDataList" parameterType="com.etocrm.sdk.entity.data.UserDataTypeVO" resultType="java.util.HashMap">
+         <!--新用户数-->
+         <!--或者从缓存mysql:select  *  from  totalData where appkey and  dt -->
+         <if test="type==1">
+             select appkey k, dt, count(uu) num         from(
+             select uu,appkey,         min(dt) as dt         from (
+             select uu,appkey,         dt
+             from youngor04_all where appShow =1
+             and dt &lt;= #{endDate}
+             ORDER BY t asc         ) a
+                  group by uu,appkey  ) a where  dt>=#{beginDate}
+         </if>
+        <if test="type==2">
+            select dt, appkey k,count(visitPath) num  from  youngor04_all   where  pageShow=1
+        </if>
+        <!--访问人数-->
+        <if test="type==3">
+            select  dt,appkey k ,uniqExact( uu) num  from  youngor04_all   where  pageShow=1
+        </if>
+        <!--打开次数-->
+        <if test="type==4">
+            select  dt,appkey k ,uniqExact(back) num  from  youngor04_all   where    1=1
+        </if>
+        <!--新增会员数-->
+        <if test="type==5">
+            select uniqExact(uu) from  youngor04_all s   where  isnewmember=1
+        </if>
+            and  appkey  GLOBAL  in
+            <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+                #{item.appKey}
+            </foreach>
+            and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            group by  dt,appkey  order by  dt  asc
+
+    </select>
+
+    <!-- 昨日-->
+    <select id="getYestDay"  resultType="java.util.HashMap" parameterType="java.util.HashMap">
+        <if test="type==1">
+            select  appkey k, count(uu) num         from(
+            select uu, appkey, min(dt) as dt         from (
+            select uu,appkey,         dt
+            from youngor04_all where appShow =1
+            and  dt &lt;= #{yestDay}
+            ORDER BY t asc         ) a
+            group by uu,appkey  ) a
+            where  dt= #{yestDay}
+            group by appkey
+        </if>
+        <if test="type==2">
+            select  appkey k,count(visitPath) num,uniqExact(openId) num1 from  youngor04_all   where   pageShow=1 and  dt=#{yestDay}  GROUP  by appkey
+        </if>
+
+      <!--打开次数-->
+        <if test="type==3">
+            select  appkey  k ,uniqExact( back) num  from  youngor04_all  where   dt=#{yestDay}   GROUP  by appkey
+        </if>
+        <!--跳出页-->
+        <if test="type==4">
+            select      k,count(1)  num from
+            (
+            SELECT   appkey k,back FROM  youngor04_all s  where     pageShow=1 and  dt=#{yestDay}  group by appkey ,back having count(back)=1
+            )   k  group  by k
+       </if>
+
+    </select>
+    <!-- appkey-->
+    <select id="getKeyAll"   resultType="java.util.Map" parameterType="java.lang.String" >
+        select  appkey k  from youngor04_all where  dt=#{dateDay}  group by appkey
+    </select>
+
+    <select id="getNewmember" parameterType="com.etocrm.sdk.entity.data.UserDataVO" resultType="java.lang.Integer">
+        select count(1) from (
+        select uu  from  youngor04_all   where isNewMember=1
+        and  appkey  GLOBAL  in
+        <foreach item="item" index="index" collection="appKeys" open="(" separator="," close=")">
+            #{item.appKey}
+        </foreach>
+        <if test="endDate!=null and endDate!=''">
+            and  dt &lt;= #{endDate}
+        </if>
+        <if test="beginDate!=null and beginDate!=''">
+            and  dt &gt;=  #{beginDate}
+        </if>
+        group  by uu
+        ) a
+    </select>
+
+</mapper>

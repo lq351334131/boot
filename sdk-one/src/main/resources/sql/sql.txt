@@ -1,0 +1,699 @@
+CREATE TABLE test.sdk0127 ON CLUSTER my_cluster \
+(isfirstday Int8,\
+    year Int16,\
+    quarter Int8,\
+    month Int8,\
+    unionId Nullable(String),\
+    openId Nullable(String),\
+    mobiePhone Nullable(String),\
+    nickname Nullable(String),\
+    language Nullable(String),\
+    gender Int8,\
+    province Nullable(String),\
+    city Nullable(String),\
+    country Nullable(String),\
+    latitude Nullable(Float32),\
+    longitude Nullable(Float32),\
+    model Nullable(String),\
+    brand Nullable(String),\
+    systems Nullable(String),\
+    platform Nullable(String),\
+    networktype Nullable(String),\
+    path Nullable(String),\
+    scene Nullable(Int16),\
+    query Nullable(String),\
+    visitpath Nullable(String),\
+    q Nullable(String),\
+    te Nullable(String),\
+    back String,\
+    tv String,\
+    tl Nullable(String),\
+    track Int16,\
+    v String,\
+    appkey String,\
+    uu String,\
+    t Int64,\
+    dt String,\
+    reqIp String,\
+    time String,\
+    depth Int8,\
+    entrypage Int8,\
+    exitpage Int8,\
+    accesspage Int8,\
+    openapp Int8,\
+    sharetime Int8,\
+    sharefrom Nullable(String),\
+    sharetitle Nullable(String),\
+    sharepath Nullable(String),\
+    isnewmember Int32\
+)ENGINE = MergeTree()\
+PARTITION BY dt\
+ORDER BY t\
+SETTINGS index_granularity = 8192
+
+
+
+CREATE TABLE IF NOT EXISTS test.sdk0127_all ON CLUSTER my_cluster AS test.sdk0127 ENGINE = Distributed(my_cluster, test, sdk0127, rand())
+
+
+
+CREATE TABLE test.pathDetailInfo
+(
+
+    `id` String,
+
+    `visitPath` Nullable(String),
+
+    `pathName` Nullable(String),
+
+    `pathTypeId` Int8,
+
+    `moduleName` Nullable(String),
+
+    `pid` Nullable(String) DEFAULT '0',
+
+    `createtime` DateTime64(3),
+
+    `updateTime` DateTime64(3) DEFAULT now(),
+
+    `name` Nullable(String),
+
+    `params` Nullable(String),
+
+    `is_del` Int8 DEFAULT 0
+)
+ENGINE = MergeTree()
+ORDER BY createtime
+SETTINGS index_granularity = 8192
+
+CREATE TABLE event (
+  `id` String DEFAULT replaceAll(toString(generateUUIDv4()), '-', ''),
+  `eventKey` Nullable(String),
+  `eventName` Nullable(String),
+  `createTime` DateTime DEFAULT now(),
+  `updateTime` DateTime DEFAULT now(),
+  `ifDel` Int8 DEFAULT 0,
+  `type` Int8 DEFAULT 0,
+  `eventId` String DEFAULT '0',
+  `k` Nullable(String),
+  `name` Nullable(String),
+  `is_del` Int8 DEFAULT 0
+) ENGINE = MergeTree()
+ORDER BY  createTime SETTINGS index_granularity = 8192;
+
+CREATE TABLE funnel_detail (
+  `id` String DEFAULT replaceAll(toString(generateUUIDv4()), '-', ''),
+  `funnelName` Nullable(String),
+  `typeId` Nullable(Int8),
+  `createTime` DateTime DEFAULT now(),
+  `funnelId` Nullable(String),
+  `stepId` Nullable(Int8),
+  `stepName` Nullable(String),
+  `stepType` Nullable(Int8),
+  `peId` Nullable(String),
+  `is_del` Int8 DEFAULT 0
+) ENGINE = MergeTree()
+ORDER BY createTime SETTINGS index_granularity = 8192;
+
+CREATE TABLE test.qr_code_group (
+  `id` String DEFAULT replaceAll(toString(generateUUIDv4()), '-', ''),
+  `groupName` Nullable(String),
+  `remark` Nullable(String),
+  `createTime` DateTime DEFAULT now(),
+  `updateTime` DateTime DEFAULT now(),
+  `type` Int8,
+  `appSecret` Nullable(String),
+  `codeType` Nullable(String),
+  `codeWidth` Nullable(String),
+  `page` Nullable(String),
+  `qrName` Nullable(String),
+  `scene` Nullable(String),
+  `appId` Nullable(String),
+  `qrGroupId` String,
+  `is_del` Int8 DEFAULT 0
+) ENGINE = MergeTree()
+ORDER BY createTime SETTINGS index_granularity = 8192;
+
+CREATE TABLE test.sceneDetailInfo (
+  `sceneId` Int16,
+  `sceneName` String,
+  `createtime` DateTime64(3) DEFAULT now()
+) ENGINE = MergeTree()
+ORDER BY   sceneId SETTINGS index_granularity = 8192;
+
+CREATE TABLE test.sys_dict
+(
+       dictName String,
+       dictValue Int8,
+       typeCode String,
+       `sql` String default  ''
+)
+ENGINE = MergeTree()
+ORDER BY dictValue
+SETTINGS index_granularity = 8192;
+insert into sys_dict  values('20S以下',	1,	'Duration',' where t1 <20 ')
+,('20-60S',	2,	'Duration',' where t1 >=20 and t1 <=60 ')
+,('1-2min',	3,	'Duration',' where t1 >60 and t1 <120 ')
+,('2-5min',	4,	'Duration',' where t1 >120 and t1 <300 ')
+,('10-20min',	5,	'Duration',' where t1 >600 and t1 <1200 ')
+,('20-30min',	6,	'Duration',' where t1 >1200 and t1 <1800 ')
+,('30-40min',	7,	'Duration',' where t1 >1800 and t1 <2400 ')
+,('40-60min',	8,	'Duration',' where t1 >2400 and t1 <3600 ')
+,('1-2h',	9,	'Duration',' where t1 >3600 and t1 <7200 ');
+
+
+CREATE TABLE test.ip
+(
+
+    `reqIp` String,
+
+    `city` String,
+
+    `province` String,
+
+    `createtime` DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY createtime
+ORDER BY createtime
+SETTINGS index_granularity = 8192;
+#跳出率=跳出/打开次数
+  select count(1) as BounceRate from
+    (
+    select count(back) a from sdk0127_all   where tv='page' and tl='show'  group by back having count(back)=1
+    )a
+#打开次数    select uniqExcat( back) a from sdk0127_all  ;
+
+#退出率=退出页、访问次数
+     select count(visitpath) a from sdk0127_all   where tv='app' and tl='hide' ;
+#访问次数  select count(1) a from sdk0127_all   where tv='page' and tl='show' ;
+#访问人数 select uniqExact(uu) a from sdk0127_all   where tv='page' and tl='show' ;
+次均停留时长：平均每次打开小程序停留在小程序页面的总时长（单位为秒），即总停留时长/打开次数
+            周期第一条数据月最后一条数据时间差=总停留时长
+分享url  te里面带有etd_sdk_share=19651E1A351918804E081C5685897277(uu)
+   根据q like etd_sdk_share  vistiapth   page show   回流量打开次数
+
+#入口页 ：每个back里面的第一个app show上报所带的ao
+ 入口页次数：select count(1) from( select  back,path
+  from sdk0127_all sa
+  where tv='app'and tl='show'
+  group by  back,path) a
+
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('20S以下',1,'Duration',' where t1 <20 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('20-60S',2,'Duration',' where t1 >=20 and t1 <=60 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('1-2min',3,'Duration',' where t1 >60 and t1 <120 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('2-5min',4,'Duration',' where t1 >120 and t1 <300 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('10-20min',5,'Duration',' where t1 >600 and t1 <1200 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('20-30min',6,'Duration',' where t1 >1200 and t1 <1800 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('30-40min',7,'Duration',' where t1 >1800 and t1 <2400 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('40-60min',8,'Duration',' where t1 >2400 and t1 <3600 ');
+INSERT INTO test.sys_dict (dictName,dictValue,typeCode,`sql`) VALUES ('1-2h',9,'Duration',' where t1 >3600 and t1 <7200 ');
+
+CREATE TABLE test.sdk_user
+(
+
+    `uu` String,
+
+    `unionId` Nullable(String),
+
+    `openId` Nullable(String),
+
+    `createtime` DateTime DEFAULT now(),
+
+    `appkey` String,
+
+    `reqIp` String,
+
+    `province` Nullable(String),
+
+    `city` Nullable(String),
+
+    `dt` String,
+
+    `platform` Nullable(String),
+
+    `brand` Nullable(String),
+
+    `model` Nullable(String)
+)
+ENGINE = MergeTree()
+PARTITION BY dt
+ORDER BY createtime
+SETTINGS index_granularity = 8192
+
+
+
+流失回流用户：在过去90天内无访问，历史上有访问（流失期在90天以上），且当天访问的用户
+沉默回流用户：在过去30天内无访问，90天内有访问（流失期在30~90天内），且当天访问的用户。
+
+
+select  visitpath,te,
+                                 visitParamExtractString(json,'v') uu1,
+                                  visitParamExtractString(json,'k') k
+                                   from  (
+                             select  visitpath,te,assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+                             from  eto.sdk0524_all  where addtocart=1
+                        ) a  array join a1 as json;
+
+select  uniq(sku_id),count(sku_id),
+ count(spu_id),
+ count(product_id) product_id
+from (
+
+
+ select te,
+                                   visitParamExtractString(json,'k') k,
+
+                                 visitParamExtractString(json,'v') v,
+                                   visitParamExtractString(v,'sku_id') sku_id,
+                                   visitParamExtractString(v,'spu_id') spu_id,
+                                  visitParamExtractString(v,'product_id') product_id,
+                                  visitParamExtractString(v,'shipping_shop_id') shipping_shop_id
+
+                                   from  (
+                             select  visitpath,te,assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+                             from  eto.sdk0524_all  where notEmpty(tl)
+                             and  addtocart=1
+                        ) a  array join a1 as json
+
+) a;
+select
+	te,
+	visitParamExtractString(json,'k') k,
+	visitParamExtractString(json,'v') v,
+	JSONExtractArrayRaw(v) v1,
+	 arrayJoin(v1),
+	visitParamExtractString(v,'order_id') order_id,
+	visitParamExtractInt(v,'order_time') order_time,
+	visitParamExtractString(v,'order_status') order_status,
+	---sub
+	visitParamExtractString(v,'sub_order_id') sub_order_id,
+	visitParamExtractInt(v,'order_amt') order_amt,
+	visitParamExtractInt(v,'pay_amt') pay_amt
+from
+	(
+	select
+		te, assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+	from
+		eto.sdk0524_all where customorder = 1
+
+
+		 ) a array join a1 as json  where k='sub_orders'  ;
+
+
+
+		select
+	te,
+	visitParamExtractString(json,'k') k,
+	visitParamExtractString(json,'v') v,
+
+	visitParamExtractString(v,'order_id') order_id,
+	visitParamExtractInt(v,'order_time') order_time,
+	visitParamExtractString(v,'order_status') order_status,
+	---sub
+	visitParamExtractString(v,'sub_order_id') sub_order_id,
+	visitParamExtractInt(v,'order_amt') order_amt,
+	visitParamExtractInt(v,'pay_amt') pay_amt
+from
+	(
+	select
+		te, assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+	from
+		eto.sdk0524_all where customorder = 1
+
+
+		 ) a array join a1 as json  where k='order'  ;
+
+##########用户订单信息
+select
+	te,
+	visitParamExtractString(json,'k') k,
+	visitParamExtractString(json,'v') v,
+	visitParamExtractString(v,'order_id') order_id,
+	visitParamExtractInt(v,'order_time') order_time,
+	visitParamExtractString(v,'order_status') order_status
+from
+	(
+	select
+		te, assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+	from
+		eto.sdk0524_all where customorder = 1
+
+
+		 ) a array join a1 as json  where k='order'  ;
+====================订单金额信息
+select
+	te,
+	visitParamExtractString(json,'k') k,
+	visitParamExtractString(json,'v') v,
+	JSONExtractArrayRaw(v) v1,
+	 arrayJoin(v1) v2,
+	 visitParamExtractString(v2,'sub_order_id') sub_order_id,
+	visitParamExtractInt(v2,'order_amt') order_amt,
+	visitParamExtractInt(v2,'pay_amt') pay_amt
+from
+	(
+	select
+		te, assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+	from
+		eto.sdk0524_all where customorder = 1
+		 ) a array join a1 as json  where k='sub_orders'  ;
+
+########商品购物车
+ select te,
+        visitParamExtractString(json,'k') k,
+        visitParamExtractString(json,'v') v,
+        visitParamExtractString(v,'sku_id') sku_id,
+        visitParamExtractString(v,'sku_name') sku_name,
+        visitParamExtractString(v,'spu_id') spu_id,
+        visitParamExtractString(v,'spu_name') spu_name,
+        visitParamExtractString(v,'product_id') product_id,
+        visitParamExtractString(v,'shipping_shop_id') shipping_shop_id,
+        visitParamExtractString(v,'shipping_shop_name') shipping_shop_name,
+        visitParamExtractInt(v,'original_price') original_price,
+        visitParamExtractInt(v,'current_price') current_price
+         from  (
+                  select  visitpath,te,assumeNotNull(te) te1, JSONExtractArrayRaw(te1) a1
+                  from  eto.sdk0524_all  where notEmpty(tl)
+                  and  addtocart=1
+          ) a  array join a1 as json；
+
+create  table shopp(
+`appkey` String,
+ shop_id String comment '门店id'
+)ENGINE = MergeTree()
+ORDER BY shop_id
+SETTINGS index_granularity = 8192;
+
+
+
+      select '{"order":{"order_id":"YGR10210525149988391","order_time":1621914998000,"order_status":"give_order"},"sub_orders":[{"sub_order_id ":"YGR10210525149988391 ","order_amt ":2280,"pay_amt ":1824}]}' b,
+                visitParamExtractRaw(b,'order') orderId,
+                visitParamExtractString(orderId,'order_id') orderId1,##没有双引号
+                 visitParamExtractRaw(orderId,'order_id') orderId11##带有双引号;
+###页面参数、二维码
+select
+t,q,
+groupArray(vv) v1,
+  arrayStringConcat(v1, '&') AS kpi_list
+from (
+
+select t, q,assumeNotNull(q) q1, JSONExtractArrayRaw(q1) a,
+
+arrayJoin(a) a1,
+visitParamExtractString(a1,'k')k,
+visitParamExtractString(a1,'v')v,
+concat(k,'=',v) vv
+
+
+from eto.sdk0524_all sa  where q !='[]'
+and t in (1621926288000,1620132965704)
+) group by t,q
+
+select  sub_orders,
+         visitParamExtractRaw(sub_orders,'pay_amt') order1,
+  JSONExtractArrayRaw(sub_orders) a,
+arrayJoin(a) j
+from eto.custom_order;
+
+##回流量
+select visitpath ,a.uu,b.uu, pageshare , exchageq  ,exchagete,
+b.visitpath
+from (select *,
+visitParamExtractString(exchageq,'etd_sdk_share') shareuu,
+concat(visitpath,shareuu) url
+ from sdk0527 where  pageshow =1 and JSONHas(exchageq,'etd_sdk_share')=1) a
+
+ inner join (select uu ,visitpath, concat(visitpath,uu) url
+
+
+ from sdk0527 where  pageshare =1
+
+ group by  visitpath ,uu
+ )
+ b  on   a.url=b.url;
+ CREATE TABLE eto.add_to_cart
+ (
+
+     `appkey` String,
+
+     `year` Int16,
+
+     `quarter` Int8,
+
+     `month` Int8,
+
+     `unionId` String,
+
+     `openId` String,
+
+     `mobiePhone` Nullable(String),
+
+     `nickname` Nullable(String),
+
+     `visitpath` Nullable(String),
+
+     `uu` String,
+
+     `t` Int64,
+
+     `dt` String,
+
+     `time` String,
+
+     `gender` Int8,
+
+     `model` Nullable(String),
+
+     `systems` Nullable(String),
+
+     `networktype` Nullable(String),
+
+     `path` Nullable(String),
+
+     `query` Nullable(String),
+
+     `scene` Int32,
+
+     `back` String,
+
+     `action_type` String COMMENT '加入append_to_cart，减少：remove_from_cart',
+
+     `sku_id` String COMMENT 'sku_id',
+
+     `sku_name` String COMMENT 'sku_name',
+
+     `shipping_shop_id` String,
+
+     `shipping_shop_name` String,
+
+     `original_price` Float32,
+
+     `current_price` Float32,
+
+     `sku_num` Int32 COMMENT '购件数',
+
+     `reqIp` String,
+
+     `product_id` String,
+
+     `product_name` String,
+
+     `spu_id` String COMMENT 'spu_id',
+
+     `spu_name` String COMMENT 'spu_name',
+
+     `id` String
+ )
+ ENGINE = MergeTree()
+ PARTITION BY dt
+ PRIMARY KEY (back,
+  t)
+ ORDER BY (back,
+  t)
+ SETTINGS index_granularity = 8192;
+ CREATE TABLE eto.custom_order
+ (
+
+     `appkey` String,
+
+     `year` Int16,
+
+     `quarter` Int8,
+
+     `month` Int8,
+
+     `unionId` String,
+
+     `openId` String,
+
+     `mobiePhone` Nullable(String),
+
+     `nickname` Nullable(String),
+
+     `visitpath` Nullable(String),
+
+     `uu` String,
+
+     `t` Int64,
+
+     `dt` String,
+
+     `time` String,
+
+     `gender` Int8,
+
+     `model` Nullable(String),
+
+     `systems` Nullable(String),
+
+     `networktype` Nullable(String),
+
+     `path` Nullable(String),
+
+     `query` Nullable(String),
+
+     `scene` Int32,
+
+     `back` String,
+
+     `order_id` String,
+
+     `order_time` Int64,
+
+     `order_status` String,
+
+     `sub_order_id` String,
+
+     `pay_amt` Float32 COMMENT '付金额',
+
+     `order_amt` Float32 COMMENT '订单金额',
+
+     `reqIp` String,
+
+     `sub_orders` String
+ )
+ ENGINE = MergeTree()
+ PARTITION BY dt
+ PRIMARY KEY (back,
+  t)
+ ORDER BY (back,
+  t)
+ SETTINGS index_granularity = 8192
+
+CREATE TABLE eto.searchs
+(
+
+    `appkey` String,
+
+    `year` Int16,
+
+    `quarter` Int8,
+
+    `month` Int8,
+
+    `unionId` String,
+
+    `openId` String,
+
+    `mobiePhone` Nullable(String),
+
+    `nickname` Nullable(String),
+
+    `visitpath` Nullable(String),
+
+    `uu` String,
+
+    `t` Int64,
+
+    `dt` String,
+
+    `time` String,
+
+    `gender` Int8,
+
+    `model` Nullable(String),
+
+    `systems` Nullable(String),
+
+    `networktype` Nullable(String),
+
+    `path` Nullable(String),
+
+    `query` Nullable(String),
+
+    `scene` Int32,
+
+    `back` String,
+
+    `reqIp` String,
+
+    `search` String
+)
+ENGINE = MergeTree()
+PARTITION BY dt
+PRIMARY KEY (back,
+ t)
+ORDER BY (back,
+ t)
+SETTINGS index_granularity = 8192;
+
+CREATE TABLE eto.getshop
+(
+
+    `appkey` String,
+
+    `year` Int16,
+
+    `quarter` Int8,
+
+    `month` Int8,
+
+    `unionId` String,
+
+    `openId` String,
+
+    `mobiePhone` Nullable(String),
+
+    `nickname` Nullable(String),
+
+    `visitpath` Nullable(String),
+
+    `uu` String,
+
+    `t` Int64,
+
+    `dt` String,
+
+    `shopp_id` Int32,
+
+    `time` String,
+
+    `gender` Int8,
+
+    `model` Nullable(String),
+
+    `systems` Nullable(String),
+
+    `networktype` Nullable(String),
+
+    `path` Nullable(String),
+
+    `query` Nullable(String),
+
+    `scene` Int32,
+
+    `back` String,
+
+    `reqIp` String
+)
+ENGINE = MergeTree()
+PARTITION BY dt
+PRIMARY KEY (back,
+ t)
+ORDER BY (back,
+ t)
+SETTINGS index_granularity = 8192;
+
+
+

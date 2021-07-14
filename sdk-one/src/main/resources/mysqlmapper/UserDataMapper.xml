@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.mysqldao.UserDataMapper">
+    <select id="getUserStatisticsSummary" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.user.UserSummaryVO">
+        select sum(newUser)newUsersCount,
+        sum(pv)  totalCountTimes ,
+        sum(openNum) openCountTimes,
+         sum( avgStopTime )  avgStopTime,
+        FORMAT(sum( `bounce` )  /sum(openNum),2) bounceRate
+        from  totalData
+        where  appkey=#{appKey}
+        and dt &lt;= #{endDate}
+        and dt>#{beginDate}
+    </select>
+
+
+
+
+
+
+
+
+</mapper>

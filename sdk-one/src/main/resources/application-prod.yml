@@ -1,0 +1,60 @@
+server:
+  port: 7003
+spring:
+  #profiles:
+    #active: prod
+  application:
+    name: etocrm-sdk-server1
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    click:
+      driverClassName: ru.yandex.clickhouse.ClickHouseDriver
+      url: jdbc:clickhouse://10.60.96.160:8123/eto
+      username: default
+      password: test123
+      initialSize: 10
+      maxActive: 100
+      minIdle: 10
+      maxWait: 6000
+    db3:
+      driverClassName: ru.yandex.clickhouse.ClickHouseDriver
+      jdbcurl: jdbc:clickhouse://10.60.96.162:8123/eto
+      username: default
+      password: test123
+      initialSize: 10
+      maxActive: 100
+      minIdle: 10
+      maxWait: 6000
+    mysql:
+      driverClassName: com.mysql.cj.jdbc.Driver
+      jdbcurl: jdbc:mysql://10.60.96.160:3306/sdk
+      username: dev_root
+      password: Bhr6_9mr)(po
+      maxLifetime: 60000
+      maximumpoolsize: 20
+      minimumIdle: 10
+      autoCommit: true
+      idleTimeout: 60000
+      poolName: DatebookHikariCP
+      connectionTimeout: 60000
+      connectiontestQuery: select 1
+      validationTimeout: 3000
+mybatis:
+  type-aliases-package: com.etocrm.sdk.entity
+  #mapper-locations: classpath:/mapper/*.xml,classpath:/mysqlmapper/*.xml
+#  configuration:
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#logging:
+#  level:
+#    com.etocrm.sdk.dao : error
+
+
+
+#mybatis-plus:
+#  typeAliasesPackage: com.etocrm.sdk.entity
+#  mapperLocations: classpath:mapper/*.xml
+#  configuration:
+#    map-underscore-to-camel-case: true
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+

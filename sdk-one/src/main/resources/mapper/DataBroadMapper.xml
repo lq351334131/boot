@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.DataBroadMapper">
+
+    <!--新用户数-->
+    <select id="getNewUser" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+        select  count(uu) num         from(
+        select uu,  min(dt) as dt         from (
+        select uu,appkey,         dt
+        from youngor04_all where appShow =1
+        and  appkey ==#{appKey}
+        and  dt &lt;= #{endDate}
+        ORDER BY t asc         ) a
+        group by uu  ) a
+        where  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+
+    </select>
+
+    <!--新用户数-->
+    <select id="getNewUser2" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+        select count(uu) num
+         from(
+        select uu,
+               groupArray(1)(time) as dates
+        from (
+        select uu,
+               time
+         from eto.liqi where appShow =1
+         and  appkey =#{appKey}
+         ORDER BY t asc
+        ) a
+        where dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+     group by uu )  b
+
+
+    </select>
+
+    <!--访问次数-->
+    <select id="getVisNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select count(1) visNum ,uniqExact(uu) accUserNum from  youngor04_all   where
+        pageShow=1
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+
+    </select>
+
+    <!-- 打开参数-->
+    <select id="getOpen" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+        select uniqExact( back) num  from  youngor04_all   where
+          appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+
+    <!-- 跳出页-->
+    <select id="getExit" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+       select count(1)from (
+        select count(visitPath) num  from  youngor04_all   where   pageShow=1
+        and  appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by visitPath
+        having count(visitPath)=1
+        )
+    </select>
+
+
+    <select id="getTopVisNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.databroad.PathDataRepVO">
+        select visitPath as visitPath ,count(1) as visitNum ,uniqExact( uu) as userNum, uniqExact(back)  openNum
+        from  youngor04_all   where
+        pageShow=1 and visitPath !='un'
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        GROUP  by visitPath   ORDER  by  visitNum desc  limit 5
+    </select>
+
+    <!--平均退出率=退出/访问次数
+    <select id="getTopExite" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+         select p, round(divide(b.num1,a.num),2) as exitrate  from
+         (
+         select p,count( 1) num  from  youngor04_all   where  k =#{appKey} and notEmpty(p) and tv='page' and tl='show' and notEmpty(p)
+          and  dt &lt;=  #{endDate}
+          and  dt &gt;=  #{beginDate} group  by  p
+        )as  a  left join
+        (
+          select p,count(distinct b) as num1  from  youngor04_all   where  tv='page'  and  tl='show'
+        and  k =#{appKey} and notEmpty(p)
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate} group  by  p
+        ) as b   on a.p=b.p
+    </select>-->
+
+    <select id="getTopSence" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.databroad.ScenDataRepVO">
+        <!--select scene ,
+        sum(if(pageShow=1 ,1,0)) useridVisitCount,
+        uniqExact( if(pageShow = 1, uu, NULL))  useridCount,
+        uniqExact(back) openCount
+         from youngor04_all s2   where  entrypage =1
+          and  appkey =#{appKey} and  dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+          group by scene
+         order by  count(1) desc   limit 5-->
+        select scene, useridVisitCount , useridCount ,openCount ,  s.sceneName  sceneName from (
+        select scene ,
+        sum(if(pageShow=1 ,1,0)) useridVisitCount,
+        uniqExact( if(pageShow = 1, uu, NULL))  useridCount,
+        uniqExact(back) openCount
+        from youngor04_all s2   where  entryPage =1
+        and  appkey =#{appKey} and  dt &lt;=  #{endDate} and  dt &gt;=  #{beginDate}
+        group by scene order by  count(1) desc   limit 5
+        ) a left join sceneDetailInfo s   on  scene=s.sceneId
+    </select>
+
+    <!--<select id="getTopSenceExite" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+         select scene, round(divide(b.num1,a.num),2) as exitrate, num   from
+         (
+         select scene,count(distinct b) num  from  youngor04_all   where k =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate} group  by  scene
+        )as  a  left join
+        (
+          select scene,count(distinct b) num1  from  youngor04_all   where  tv='page'  and  tl='show'
+        and  k =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate} group  by  scene
+        ) b on  a.scene=b.scene
+    </select>-->
+    <select id="getTopProvince" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.databroad.RegDataRepVO">
+       select  ip.province region ,count(1) reginCount  from youngor04_all s   global  left  join
+            (select province,reqIp from  ip1 where  province!='[]'
+              and  dt  &lt;= #{endDate}
+             and  dt >=  #{beginDate}
+              group  by province,reqIp) ip on  s.reqIp=ip.reqIp
+             where  appkey =#{appKey}  and  dt  &lt;= #{endDate}
+             and  dt >=  #{beginDate}
+            group by  ip.province
+            order by reginCount   DESC limit 5
+    </select>
+
+    <select id="getDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select dt  from youngor04_all where  appkey =#{appKey}
+          and  dt &lt;=  #{endDate}
+          and   dt &gt;=  #{beginDate}
+          group  by  dt order  by  dt  DESC
+    </select>
+
+    <select id="getNewUserDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select dt from
+        (select dt  from youngor04_all where  appkey =#{appKey}
+          and  dt &lt;=  #{endDate}
+          and appShow=1
+          order by  t   limit 1  by uu
+        ) a
+          where    dt &gt;=  #{beginDate}
+          group  by  dt
+          order  by  dt  DESC
+
+
+    </select>
+
+    <select id="getUserDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select  dt, uniqExact( uu) num  from  youngor04_all   where   pageShow=1
+        and appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by dt
+        order by  dt  desc
+    </select>
+
+    <select id="getOpenDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+       select  dt,uniqExact( back)  num  from  youngor04_all
+         where  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by   dt
+    </select>
+    <select id="getQrData" resultType="com.etocrm.sdk.entity.databroad.QRReqVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select
+        path, count(uu) trackCount, uniqExact(uu) useridCount
+        from
+        eto.youngor04_all a
+        where
+        pageShow = 1
+        and a.scene in (1011,1012,1013)
+        and appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by
+        path
+        order by
+        count(uu) desc
+        limit 5
+     <!--   select
+        b.qrGroupName groupName ,
+        a.path page,
+        b.qrName,
+        b.createTime createTime,
+        trackCount,
+        useridCount
+    from
+        (
+        select
+            path, count(uu) trackCount, uniqExact(uu) useridCount
+        from
+            eto.youngor04_all a
+        where
+            pageShow = 1
+            and a.scene in (1011,1012,1013)
+            and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+        group by
+            path
+        order by
+            count(uu) desc
+        limit 5 ) a
+    global left join (
+        select
+            a.page qrURL, a.qrName, b.groupName qrGroupName , toString(a.createTime) createTime
+        from
+            qr_code_group a
+    global inner join qr_code_group b on
+            a.qrGroupId = b.id
+        where
+            a.type = 2
+            and b.type = 1
+            and a.is_del = 0
+            and b.is_del = 0 ) b on
+        a.path = b.qrURL-->
+
+    </select>
+    <select id="getQrDataNewUser" resultType="com.etocrm.sdk.entity.databroad.QRReqVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadLIstVO">
+        SELECT    page , uniqExact(uu) newUseridCount from (
+        select  path  page ,scene ,uu ,dt
+        from  youngor04_all a where appShow =1
+        and appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        order by  t limit 1 by uu
+        ) a
+        where dt &gt;=  #{beginDate}
+         and scene  in (1011,1012,1013)
+        and  page  global  in
+        <foreach item="item" index="index" collection="page" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        group  by page
+
+
+    </select>
+
+    <select id="getTotalDataRepVO" resultType="com.etocrm.sdk.entity.databroad.TotalDataRepVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadLIstVO">
+    select
+        sum(if(pageShow =1,1,0)) visitNum,
+        uniqExact( back) openNum,
+        uniqExact(if(pageShow = 1 , uu, NULL)) userNum
+    from  youngor04_all
+    where  appkey =#{appKey}
+     and  dt &lt;=  #{endDate}
+     and  dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getPortalDetailDatas" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="com.etocrm.sdk.entity.databroad.PortalDetailDatasRepVO">
+        select   dt `date`,
+        uniqExact( back) openNum,
+        uniqExact(if(pageShow=1,uu,null)) userNum
+        from  youngor04_all
+        where appkey= #{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by dt
+        order by dt asc
+
+
+
+    </select>
+
+    <!-- 跳出页-->
+    <select id="getBounce" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+    select count(1) as  exitRate from
+      (
+        select count(back) a from youngor04_all   where pageShow=1
+           and appkey= #{appKey}
+           and   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+        group by back having count(back)=1
+      )a
+    </select>
+    <!-- 跳出页-->
+    <select id="getTopExitVisNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadLIstVO" resultType="java.lang.Integer">
+         select count(1) as  exitRate from
+      (
+        select count(back) a from youngor04_all   where pageShow=1
+           and appkey= #{appKey}
+           and   dt &lt;=  #{endDate}
+            and  dt &gt;=  #{beginDate}
+        <if test="visitpath!=''and visitpath!=null">
+            and  visitPath =#{visitpath}
+        </if>
+        <if test="scene!=null">
+            and  scene =#{scene}
+        </if>
+
+        group by back having count(back)=1
+      )a
+    </select>
+    <select id="getTopOpen" parameterType="com.etocrm.sdk.entity.databroad.DataBroadLIstVO" resultType="java.lang.Integer">
+        select uniqExact( back)  a from youngor04_all   where   appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="visitpath!=''and visitpath!=null">
+            and  visitPath =#{visitpath}
+        </if>
+        <if test="scene!=null">
+            and  scene =#{scene}
+        </if>
+    </select>
+
+    <select id="getTime" parameterType="com.etocrm.sdk.entity.databroad.DataBroadLIstVO" resultType="java.lang.Integer">
+        select  sum(t1) from (
+        select    max(`t`) m,min(`t`) n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all where appkey =#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="visitpath!=''and visitpath!=null">
+            and  visitPath =#{visitpath}
+        </if>
+        <if test="scene!=null">
+            and  scene =#{scene}
+        </if>
+        group by  back,uu
+        ) as f
+    </select>
+
+    <select id="getTotalnewUser" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select  count(uu) num         from(
+        select uu,  min(dt) as dt         from (
+        select uu,appkey,         dt
+        from  youngor04_all where appShow =1
+        and  appkey= #{appKey}
+        and  dt &lt;= #{endDate}
+        ORDER BY t asc         ) a
+        group by uu  ) a
+        where  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+
+    </select>
+
+    <select id="getTotalnewUserDate" resultType="com.etocrm.sdk.entity.databroad.PortalDetailDatasRepVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select dt date,count(uu) newUserNum  from (
+            select  dt,uu from  youngor04_all y where appShow =1
+            and  appkey= #{appKey}
+            and  dt &lt;= #{endDate}
+            order by t  limit 1 by uu) a where dt  &gt;=  #{beginDate}
+            group by dt  order by  dt  asc
+    </select>
+
+    <select id="getVisUserNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.lang.Integer">
+        select  uniqExact(uu) accUserNum from  youngor04_all   where
+        pageShow=1
+        and  appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+
+
+
+</mapper>

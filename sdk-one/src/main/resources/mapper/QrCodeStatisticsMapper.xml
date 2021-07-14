@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.QrCodeStatisticsMapper">
+
+
+    <select id="getQrCodeStatistics" resultType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+<!--       select  count(1)scanQrNum,-->
+<!--        count(visitpath) visitNum,-->
+<!--        uniqExact(openId) userNum-->
+<!--         from youngor04_all a-->
+<!--        where  a.pageshow=1-->
+<!--        <if test="appKey!=null and appKey!=''">-->
+<!--            and a.appkey=#{appKey}-->
+<!--        </if>-->
+<!--        and  visitpath global in  (  select page from qr_code_group where  appId=#{appId}  and  `type`=2 and is_del=0)-->
+<!--        and  a.scene in (1011,1012,1013)-->
+<!--        and  a.dt &lt;=  #{endDate}-->
+<!--        and  a.dt &gt;= #{beginDate}-->
+       select  count(1)scanQrNum,count(visitPath) visitNum, uniqExact(uu) userNum
+        from youngor04_all a where  a.pageshow=1
+        <if test="appKey!=null and appKey!=''">
+            and a.appkey=#{appKey}
+        </if>
+        and  a.scene in (1011,1012,1013)
+        and  a.dt &lt;=  #{endDate}
+        and  a.dt &gt;= #{beginDate}
+    </select>
+
+    <select id="getNewUser" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+<!--        select uniqExact(uu) newVisitNum from-->
+<!--      (-->
+<!--       select   uu,t,scene-->
+<!--         from youngor04_all a   where  a.appshow=1-->
+<!--        <if test="appKey!=null and appKey!=''">-->
+<!--            and a.appkey=#{appKey}-->
+<!--        </if>-->
+<!--        and  a.scene in (1011,1012,1013)-->
+<!--        and  visitpath global in  (  select page from qr_code_group where  appId=#{appId}  and  `type`=2 and is_del=0)-->
+<!--        and  a.dt &lt;=  #{endDate}-->
+<!--        and  a.dt &gt;= #{beginDate}-->
+<!--        ) a-->
+<!--        inner  join(-->
+<!--        select uu,  min(dt) as dt ,min(t) as t         from (-->
+<!--        select uu,       dt,t-->
+<!--        from youngor04_all where appshow =1  and appkey =#{appKey}-->
+<!--        and  dt &lt;=  #{endDate}-->
+<!--        ORDER BY t asc         ) a-->
+<!--        group by uu-->
+<!--        ) c  on  a.uu=c.uu and a.t=c.t-->
+<!--        where  c.dt &gt;= #{beginDate}-->
+         select count(uu) from (select uu ,scene,dt  from   youngor04_all a where
+            a.dt &lt;=  #{endDate}
+           <if test="appKey!=null and appKey!=''">
+            and a.appkey=#{appKey}
+           </if>
+            order by  t  limit 1 by uu) a  where   a.dt &gt;= #{beginDate}
+            and  a.scene in (1011,1012,1013)
+
+     </select>
+    <select id="getQrGroupStatistics" resultType="com.etocrm.sdk.entity.QrStatistics.QrGroupStatisticsRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                   select  count(1)scanQrGroupNum,
+                    count(visitPath) visitNum,
+                    uniqExact(openId) userNum
+                     from youngor04_all a
+                     where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  visitPath global in (
+                    select page from qr_code_group  a  inner  join qr_code_group  b  on  a.qrGroupId=b.id
+                    where  appId=#{appId} and a.type=2 and  b.type=1 and is_del=0
+                    )
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                </select>
+                <select id="getQrGroupNewUser" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                    <!--select uniqExact(uu) newVisitNum from
+                    (
+                    select   uu,t
+                    from youngor04_all a   where  a.appshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  visitpath global in  (  select page from qr_code_group a inner join qr_code_group b on a.qrGroupId=b.id
+                    where a.appId=#{appId} and a.type=2 and b.type=1 and a.is_del=0 and b.is_del=0)
+                    ) a
+                    inner  join(
+                    select uu,  min(dt) as dt ,min(t) as t         from (
+                    select uu,       dt,t
+                    from youngor04_all where appshow =1  and appkey =#{appKey}
+                    and  dt &lt;=  #{endDate}
+                    ORDER BY t asc         ) a
+                    group by uu
+                    ) c  on  a.uu=c.uu and a.t=c.t
+                    where  c.dt &gt;= #{beginDate}-->
+                    select  uniqExact(uu)  newVisitNum  from (
+                        select  uu ,scene,dt,visitPath from  youngor04_all  where  appshow=1
+                        and appkey =#{appKey}
+                         and dt &lt;=  #{endDate}
+                        order by  t limit 1 by uu
+                    ) a  left join(
+                     select page from qr_code_group a inner join qr_code_group b on a.qrGroupId=b.id
+                    where  a.type=2 and b.type=1 and a.is_del=0 and b.is_del=0
+                    and a.appId=#{appId}
+                    ) b on a.visitPath=b.page
+                    where a.scene  in (1011,1012,1013)
+                    and a.dt &gt;= #{beginDate}
+
+
+                </select>
+
+                <select id="getQrCodeDate" resultType="com.etocrm.sdk.entity.QrStatistics.QrCodeDateRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                   select  toString(dt) dateTime,
+                    count(openId) visitNum,
+                    uniqExact(openId) userNum
+                     from youngor04_all a
+                   where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  visitPath global in (
+                     select page from qr_code_group where  appId=#{appId}  and  `type`=2  and is_del=0
+                    )
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by  a.dt
+                    order by  a.dt  desc
+                </select>
+
+                <select id="getQrCodeNewUserDate" resultType="com.etocrm.sdk.entity.QrStatistics.QrCodeDateRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                 select  a.dt dateTime,uniqExact(a.uu) newVisit from
+                  (
+                  select dt ,
+                     uu,t
+                     from youngor04_all a
+                    where  a.appshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  path global in (
+                    select page from qr_code_group where  appId=#{appId}  and  `type`=2 and is_del=0
+                    )
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group by  dt
+                    order by  a.dt  desc
+                    )a inner join (
+                        select uu,  min(dt) as dt ,min(t) as t         from (
+                        select uu,       dt,t
+                        from youngor04_all where appshow =1  and appkey =#{appKey}
+                        and  dt &lt;=  #{endDate}
+                        ORDER BY t asc         ) a
+                        group by uu
+                    ) c  on  a.uu=c.uu and  a.t=c.t
+                    where  c.dt>= #{beginDate}
+                    group by a.dt
+
+                </select>
+
+                <select id="getQrGroupDate" resultType="com.etocrm.sdk.entity.QrStatistics.QrGroupDateRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                   select  dt `date`,b.groupName,
+                    count(openId) visitNum,
+                    uniqExact(openId) userNum
+                     from youngor04_all a   global left join (
+                    select a.page,b.groupName groupName  from qr_code_group  a  inner  join qr_code_group  b  on  a.qrGroupId=b.id
+                       where  a.appId=#{appId} and a.type=2 and  b.type=1
+                       and a.is_del=0  and b.is_del=0
+                   ) b  on  a.visitPath=b.page
+                   where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by  a.dt,b.groupName
+                    order by  a.dt  desc
+                </select>
+
+                <select id="getQrGroupNewUserDate" resultType="com.etocrm.sdk.entity.QrStatistics.QrGroupDateRepVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                   select a.dt `date`, a.groupName,
+                    uniqExact(a.uu) newVisit from
+                    (select  dt , b.groupName groupName, t,
+                         uu
+                         from youngor04_all a   global left join (
+                        select a.page,b.groupName groupName from qr_code_group  a  inner  join qr_code_group  b  on  a.qrGroupId=b.id
+                           where  appId=#{appId} and a.type=2 and  b.type=1
+                          and a.is_del=0  and b.is_del=0
+                       ) b  on  a.visitPath=b.page
+                       where  a.appshow=1
+                        <if test="appKey!=null and appKey!=''">
+                            and a.appkey=#{appKey}
+                        </if>
+                        and  a.scene in (1011,1012,1013)
+                        and  a.dt &lt;=  #{endDate}
+                        and  a.dt &gt;=  #{beginDate}
+                    ) a  inner  join (
+                        select uu,  min(dt) as dt ,min(t) as t         from (
+                        select uu,       dt,t
+                        from youngor04_all where appshow =1  and appkey =#{appKey}
+                        and  dt &lt;=  #{endDate}
+                        ORDER BY t asc         ) a
+                        group by uu
+                    ) b on a.uu=b.uu and a.t=b.t
+                    where b.dt &gt;=  #{beginDate}
+                    group  by  a.dt ,a.groupName
+                    order by a.dt desc
+
+                </select>
+
+                <select id="getStatisticsTableOfQrCode" resultType="com.etocrm.sdk.entity.QrStatistics.StatisticsTableOfQrCodeVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsPageVO">
+                    <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+                    select
+                        b.qrGroupName ,
+                        b.qrURL,
+                        b.qrName,
+                        toString(b.createTime) createTime,
+                        count(visitPath) visitNum,
+                        uniqExact(uu) userNum
+                        from
+                        youngor04_all a
+                        global join (
+                        select
+                        a.page qrURL,a.qrName, b.groupName qrGroupName ,a.createTime  createTime
+                        from
+                        qr_code_group a
+                        inner join qr_code_group b on
+                        a.qrGroupId = b.id
+                        where
+                        appId =#{appId}
+                        and a.type = 2
+                        and b.type = 1  and a.is_del=0  and b.is_del=0 ) b on
+                        a.visitPath = b.qrURL
+                        where  a.pageshow=1
+                        <if test="appKey!=null and appKey!=''">
+                          and a.appkey=#{appKey}
+                        </if>
+                       and  a.scene in (1011,1012,1013)
+                       and  a.dt &lt;=  #{endDate}
+                       and  a.dt &gt;=  #{beginDate}
+                        group  by
+                        b.qrGroupName ,
+                        b.qrURL,
+                        b.qrName,
+                        b.createTime
+                    limit #{limit},#{pageSize}
+                </select>
+
+                <select id="getStatisticsTableOfQrCodeCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsPageVO">
+                    select
+                       uniqExact(b.qrURL,b.qrName, b. qrGroupName ,b.createTime) num
+                    from
+                        youngor04_all a
+                    global join (
+                        select
+                            a.page qrURL,a.qrName, b.groupName qrGroupName ,a.createTime  createTime
+                        from
+                            qr_code_group a
+                        inner join qr_code_group b on
+                            a.qrGroupId = b.id
+                        where
+                            appId =#{appId}
+                            and a.type = 2
+                            and b.type = 1  and a.is_del=0  and b.is_del=0 ) b on
+                        a.visitPath = b.qrURL
+                    where
+                       a.pageshow=1
+                      <if test="appKey!=null and appKey!=''">
+                        and a.appkey =#{appKey}
+                      </if>
+                        and a.scene in (1011, 1012, 1013)
+
+                </select>
+
+                <select id="downLoadStatisticsTableOfQrCode" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO" resultType="com.etocrm.sdk.entity.QrStatistics.StatisticsTableOfQrCodeVO">
+                    select
+                    b.qrGroupName ,
+                    b.qrURL,
+                    b.qrName,
+                    toString(b.createTime) createTime,
+                    count(visitPath) visitNum,
+                    uniqExact(openId) userNum
+                    from
+                    youngor04_all a
+                    global join (
+                    select
+                    a.page qrURL,a.qrName, b.groupName qrGroupName ,a.createTime  createTime
+                    from
+                    qr_code_group a
+                    inner join qr_code_group b on
+                    a.qrGroupId = b.id
+                    where
+                    appId =#{appId}
+                    and a.type = 2
+                    and b.type = 1  and a.is_del=0  and b.is_del=0) b on
+                    a.visitPath = b.qrURL
+                    where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by
+                    b.qrGroupName ,
+                    b.qrURL,
+                    b.qrName,
+                    b.createTime
+                </select>
+
+                <select id="getStatisticsTableOfQrGroup" resultType="com.etocrm.sdk.entity.QrStatistics.StatisticsTableOfQrGroupVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsPageVO">
+                    <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+                    select
+                    b.id,
+                    b.groupName,
+                    toString(b.createTime) createTime,
+                    count(visitPath) visitNum,
+                    uniqExact(uu) userNum
+                    from
+                    youngor04_all a
+                    global join (
+                    select
+                    b.id id,b.groupName groupName ,b.createTime  createTime  ,a.page qrURL
+                    from
+                    qr_code_group a
+                    inner join qr_code_group b on
+                    a.qrGroupId = b.id
+                    where
+                    appId =#{appId}
+                    and a.type = 2
+                    and b.type = 1  and a.is_del=0  and b.is_del=0) b on
+                    a.visitPath = b.qrURL
+                    where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by
+                    b.id ,
+                    b.groupName,
+                    b.createTime
+                </select>
+
+                <select id="getStatisticsTableOfQrGroupExcel" resultType="com.etocrm.sdk.entity.QrStatistics.StatisticsTableOfQrGroupVO" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                    select
+                    b.id,
+                    b.groupName,
+                    toString(b.createTime) createTime,
+                    count(visitPath) visitNum,
+                    uniqExact(uu) userNum
+                    from
+                    youngor04_all a
+                    global join (
+                    select
+                    b.id id,b.groupName groupName ,b.createTime  createTime  ,a.page qrURL
+                    from
+                    qr_code_group a
+                    inner join qr_code_group b on
+                    a.qrGroupId = b.id
+                    where
+                    appId =#{appId}
+                    and a.type = 2
+                    and b.type = 1  and a.is_del=0  and b.is_del=0) b on
+                    a.visitPath = b.qrURL
+                    where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by
+                    b.id ,
+                    b.groupName,
+                    b.createTime
+                </select>
+
+                <select id="getStatisticsTableOfQrGroupCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsVO">
+                    select
+                    uniqExact(b.id,b.groupName,b.createTime)
+                    from
+                    youngor04_all a
+                    global join (
+                    select
+                    b.id id,b.groupName groupName ,b.createTime  createTime  ,a.page qrURL
+                    from
+                    qr_code_group a
+                    inner join qr_code_group b on
+                    a.qrGroupId = b.id
+                    where
+                    appId =#{appId}
+                    and a.type = 2
+                    and b.type = 1  and a.is_del=0  and b.is_del=0) b on
+                    a.visitPath = b.qrURL
+                    where  a.pageshow=1
+                    <if test="appKey!=null and appKey!=''">
+                        and a.appkey=#{appKey}
+                    </if>
+                    and  a.scene in (1011,1012,1013)
+                    and  a.dt &lt;=  #{endDate}
+                    and  a.dt &gt;=  #{beginDate}
+                    group  by
+                    b.id ,
+                    b.groupName,
+                    b.createTime
+
+                </select>
+                <select id="getVisitNewUser" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsPageVO">
+                    select visitpath, uniqExact(uu) num from
+                        ( select  visitPath visitpath, uu ,scene ,dt from youngor04_all  s
+                         where   appkey=#{appKey}
+                         and  appshow =1 and    s.dt  &lt;= #{endDate}
+                          order by t  limit 1 by uu
+                        )  a
+                        where  a.dt>= #{beginDate}
+                        and  a.scene in (1011,1012,1013)
+                        and visitpath!='un'
+                        group by visitpath
+
+                </select>
+
+                <select id="getVisitNewUserGroup" resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.QrStatistics.QrCodeStatisticsPageVO">
+               select  groupName, uniqExact(uu) num from
+                   ( select a.visitpath visitpath, a.uu  uu from
+                        ( select  visitPath  visitpath, uu ,t from youngor04_all  s   where   appkey=#{appKey} and  appshow =1 and   s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}
+                         and  visitPath!='un'
+                        )  a
+                        inner join (
+                        select uu,  min(dt) as dt ,min(t) as t         from (
+                        select uu,       dt,t
+                        from youngor04_all where appshow =1  and appkey =#{appKey}
+                        and  dt &lt;=  #{endDate}
+                        ORDER BY t asc         ) a
+                        group by uu
+                        ) c  on  a.uu=c.uu and  a.t=c.t
+                        where  c.dt>= #{beginDate}
+                     group by visitpath,uu)
+                      a
+                     global join (
+                    select
+                    b.id id,b.groupName groupName ,b.createTime  createTime  ,a.page qrURL
+                    from
+                    qr_code_group a
+                    inner join qr_code_group b on
+                    a.qrGroupId = b.id
+                    where
+                    appId =#{appId}
+                    and a.type = 2
+                    and b.type = 1  and a.is_del=0  and b.is_del=0) b on
+                    a.visitpath = b.qrURL
+                    group by groupName
+                </select>
+
+
+
+
+            </mapper>

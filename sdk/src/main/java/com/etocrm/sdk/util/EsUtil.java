@@ -2,6 +2,7 @@ package com.etocrm.sdk.util;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
@@ -65,7 +66,7 @@ public class EsUtil {
     }
 
     /**
-     * es，groupby 分组后数据条数
+     * es，groupby 分组后数据条数count（distinct），
      */
     public long groupBy(String idxName, String field, QueryBuilder queryBuilder) {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -266,5 +267,69 @@ public class EsUtil {
             return false;
         }
     }
+
+    /**
+     *
+     * @Description groupby
+     * @author xing.liu
+     * @date 2020/9/25
+     **/
+    public List<Map<String,Object>> groupByMap(String idxName, String field, QueryBuilder queryBuilder, Integer size) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(0);
+        searchSourceBuilder.query(queryBuilder);
+        searchSourceBuilder.aggregation(AggregationBuilders.terms("groupByName")
+                .field(field).size(size));
+        //searchSourceBuilder.fetchSource("province",null);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(idxName);
+        searchRequest.source(searchSourceBuilder);
+        List<Map<String,Object>> result=new ArrayList<>();
+        try {
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            Aggregations aggregations = searchResponse.getAggregations();
+            Terms terms = aggregations.get("groupByName");
+            Map<String,Object> map=null;
+            for(Terms.Bucket buck : terms.getBuckets()) {
+                map=new LinkedHashMap<>();
+                map.put("key",buck.getKey());
+                map.put("value",buck.getDocCount());
+                result.add(map);
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return result;
+
+    }
+
+    public Map<String,Object> groupByFiledMap(String idxName, String field, QueryBuilder queryBuilder, Integer size) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(0);
+        searchSourceBuilder.query(queryBuilder);
+        searchSourceBuilder.aggregation(AggregationBuilders.terms("groupByName")
+                .field(field).size(size));
+        //searchSourceBuilder.fetchSource("province",null);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(idxName);
+        searchRequest.source(searchSourceBuilder);
+        Map<String, Object> map = new LinkedHashMap<>();
+        try {
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+            Aggregations aggregations = searchResponse.getAggregations();
+            Terms terms = aggregations.get("groupByName");
+            for (Terms.Bucket buck : terms.getBuckets()) {
+                map.put(buck.getKeyAsString(),0);
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return  map;
+    }
+
+    /**
+     * 查询符合要求的list
+     *
+     * */
 
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.db3dao.CampaignMapper">
+
+    <select id="getPvUvByParams" parameterType="com.etocrm.sdk.entity.campaign.GetPvUvByOneParamVO" resultType="com.etocrm.sdk.entity.campaign.CampaignReturnVO">
+        SELECT COUNT(1) as pv,COUNT(DISTINCT uu) as uv
+        FROM eto.page_show_info
+        where appkey = #{appKey}
+        AND dt <![CDATA[>=]]> #{startTime} AND dt <![CDATA[<=]]>  #{endTime}
+        AND  visitpath = #{pageUrl}
+        AND paramq LIKE '%'#{pageParam.key}'%' AND paramq LIKE '%'#{pageParam.value}'%';
+    </select>
+</mapper>

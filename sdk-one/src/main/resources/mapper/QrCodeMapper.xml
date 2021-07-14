@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.QrCodeMapper">
+    <select id="getCodeListPagging" resultType="com.etocrm.sdk.entity.Qr.QrCodeRepVO" parameterType="com.etocrm.sdk.entity.Qr.QrCodePageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  a.createTime, a.codeType, a.codeWidth, a.page, b.groupName, a.qrName
+        from   qr_code_group a
+        inner  join ( select  groupName,id  from qr_code_group  where type=1 and  is_del=0) b   on  a.qrGroupId=b.id
+        where  a.type=2 and a.is_del=0
+        and  a.appId=#{appId}
+        <if test="qrName!=null and qrName!='' ">
+            and  a.qrName=#{qrName}
+        </if>
+        <if test="groupName!=null and groupName!='' ">
+            and  b.groupName=#{groupName}
+        </if>
+        order by  a.createTime desc,a.updateTime desc
+        limit #{limit}, #{pageSize}
+    </select>
+    <select id="getQrGroupCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.Qr.QrCodePageVO">
+        select  count(1)
+        from   qr_code_group  a
+        inner  join ( select groupName,id  from qr_code_group  where type=1 and is_del=0) b   on  a.qrGroupId=b.id
+        where  a.type=2 and a.is_del=0
+        and  a.appId=#{appId}
+        <if test="qrName!=null and qrName!='' ">
+            and  a.qrName=#{qrName}
+        </if>
+        <if test="groupName!=null and groupName!='' ">
+            and  b.groupName=#{groupName}
+        </if>
+    </select>
+
+    <select id="downloadPage" resultType="com.etocrm.sdk.entity.Qr.QrCodeRepVO" parameterType="com.etocrm.sdk.entity.Qr.QrCodeVO">
+        select  a.createTime, a.codeType, a.codeWidth, a.page, b.groupName, a.qrName
+        from   qr_code_group a
+          inner  join ( select groupName,id   from qr_code_group  where type=1 and is_del=0) b   on  a.qrGroupId=b.id
+          where  a.type=2 and a.is_del=0
+            and  a.appId=#{appId}
+        <if test="qrName!=null and qrName!='' ">
+            and  a.qrName=#{qrName}
+        </if>
+        <if test="groupName!=null and groupName!='' ">
+            and  b.groupName=#{groupName}
+        </if>
+        order by  a.createTime desc,a.updateTime desc
+    </select>
+
+    <select id="getCodeParam" resultType="com.etocrm.sdk.entity.Qr.QrCodeRepVOParVO" parameterType="com.etocrm.sdk.entity.Qr.QrCodeParam">
+        select  a.createTime, a.codeType, a.codeWidth, a.page, b.groupName, a.qrName
+        from   qr_code_group a
+        inner  join ( select  groupName,id  from qr_code_group  where type=1 and  is_del=0) b   on  a.qrGroupId=b.id
+        where  a.type=2 and a.is_del=0
+        <if test="appId!=null and appId!='' ">
+            and  a.appId=#{appId}
+        </if>
+        <if test="qrId!=null and qrId!='' ">
+            and  a.id=#{qrId}
+        </if>
+        order by  a.createTime desc,a.updateTime desc
+    </select>
+
+
+</mapper>

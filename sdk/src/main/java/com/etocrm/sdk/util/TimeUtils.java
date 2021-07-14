@@ -36,6 +36,54 @@ public class TimeUtils {
 		}
 		return null;
 	}
+	/**
+	 * 日期转换成时间
+	 * */
+	public static String  getDateToString(Date date) {
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+		try {
+			String  dateToString = formatter.format(date);
+			return dateToString;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	/**
+	 * 日期字符串转换成时间
+	 * */
+	public static Date  dateStringToDate(String date,String format) {
+		SimpleDateFormat formatter = new SimpleDateFormat(format);
+		try {
+			Date stringToDate = formatter.parse(date);
+			return stringToDate;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * 根据开始结束日期获取每天日期
+	 * begDate,endDate格式为yyyy-MM-dd
+	 * */
+	public static List<Date>  findDate(Date begDate,Date endDate) {
+		List<Date>list=new ArrayList<>();
+		try {
+			list.add(begDate);
+			Calendar calendarBagDate=Calendar.getInstance();
+			calendarBagDate.setTime(begDate);
+			Calendar calendarEndDate=Calendar.getInstance();
+			calendarEndDate.setTime(endDate);
+			while (calendarEndDate.after(calendarBagDate)){
+				calendarBagDate.add(Calendar.DAY_OF_MONTH,1);
+				list.add(calendarBagDate.getTime());
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
 
 	public static String getGapTime(long time){
 		long hours = time / (1000 * 60 * 60);
@@ -96,16 +144,50 @@ public class TimeUtils {
      * @author xing.liu
      * @date ${DATE} ${TIME}
      */
-	public static String addDayone(String  date){
+	public static String addDayone(String  date,Integer... day){
 		SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd");
 		Calendar c = Calendar.getInstance();
 		c.setTime(getstrDate(date));
-		c.add(Calendar.DAY_OF_MONTH, 1);
+		if(day.length==0){
+			c.add(Calendar.DAY_OF_MONTH, 1);
+		}else{
+			c.add(Calendar.DAY_OF_MONTH, day[0]);
+
+		}
 		Date tomorrow = c.getTime();
 		return f.format(tomorrow);
 	}
 
+	public static String getYyyyMMdd(Long time) {
+		Date date = new Date(time);
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+		return formatter.format(date);
+	}
 
+	/****
+	 * 传入具体日期 ，返回具体日期减少一天
+	 * @return 2017-04-12
+	 * @throws ParseException
+	 */
+	public static  String subDay(Integer ...day)  {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		Date dt = new  Date();
+		Calendar rightNow = Calendar.getInstance();
+		rightNow.setTime(dt);
+		rightNow.add(Calendar.DAY_OF_MONTH, -1);
+		Date dt1 = rightNow.getTime();
+		String reStr = sdf.format(dt1);
+		return reStr;
+	}
+
+	public static String reduceDayone(String  date,Integer day){
+		SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd");
+		Calendar c = Calendar.getInstance();
+		c.setTime(getstrDate(date));
+		c.add(Calendar.DAY_OF_MONTH, day);
+		Date tomorrow = c.getTime();
+		return f.format(tomorrow);
+	}
 
 
 }

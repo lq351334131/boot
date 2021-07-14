@@ -1,0 +1,772 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.ShareMapper">
+    <select id="getUserShare" resultType="com.etocrm.sdk.entity.share.ShareUserVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select count(1)shareNumTotal ,uniqExact(uu) peopleNumTotal from  youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+    </select>
+    <select id="getUserSharebackflow" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select count(1)  from
+      ( select  visitPath,uu   from youngor04_all  s   where   appkey=#{appKey} and    s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate} and  s.pageShow=1
+       and q like '%etd_sdk_share%')  a  inner  join
+      (  select  s.visitPath  from  youngor04_all s   where  s.pageShare=1
+            and s.appkey=#{appKey}  and  s.dt  &lt;= #{endDate}
+            and  s.dt &gt;=  #{beginDate}
+             group by  visitPath
+      ) b  on  a.visitPath=b.visitPath
+     </select>
+
+    <select id="getUserShareAdd" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select uniq(a.uu)  from ( select  uu ,visitPath,
+      visitParamExtractString(paramQ,'etd_sdk_share')shareUu
+      from youngor04_all  s   where
+     pageShow =1     and    visitParamHas(paramQ,'etd_sdk_share')
+     and   appkey=#{appKey} and    s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}
+      group  by  shareUu,uu,visitPath)
+       a inner join (
+       select uu,dt  from youngor04_all
+                where  appShow=1   and   appkey=#{appKey} and  dt  &lt;= #{endDate}
+               order by t limit 1  by uu
+     ) b  on a.uu=b.uu
+     inner  join (
+      SELECT visitPath ,uu
+      from  youngor04_all s   where  s.pageShare=1
+       and appkey=#{appKey} and  dt &gt;=  #{beginDate}  and dt  &lt;= #{endDate}
+      group by  visitPath ,uu
+       ) c  on  a.shareUu=c.uu where a.visitPath=c.visitPath
+         and   b.dt &gt;=  #{beginDate}
+
+
+    </select>
+
+    <select id="getShareNumList" resultType="com.etocrm.sdk.entity.share.ShareNumVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+     select nickname nickName , count(1) num from
+      ( select uu from youngor04_all where  appkey=#{appKey}  and pageShare=1) s
+      global  left  join(
+      select uu ,nickname from youngor04_all where  appkey=#{appKey}  and notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId)  group by  uu ,nickname
+       )  u  on s.uu=u.uu
+       group  by u.nickname
+       order by count(1) desc
+      limit 10
+
+    </select>
+
+    <select id="getShareGenderList" resultType="com.etocrm.sdk.entity.share.ShareGenderVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+
+     select u.gender,count(1) num from (
+        select  uu  from youngor04_all
+         where appkey=#{appKey}  and     dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}  and  pageShare=1
+        ) a  global  left  join (
+        select uu,gender from  youngor04_all where notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId) and appkey=#{appKey} group by uu,gender
+        ) u  on  a.uu=u.uu
+        group  by u.gender
+         WITH ROLLUP
+    </select>
+
+    <select id="getAreaShareLeaderboard" resultType="com.etocrm.sdk.entity.share.ShareCityVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select city ,count(1)shareNum,uniqExact(uu)peopleNum from ( select  reqIp,uu   from   youngor04_all where
+        pageShare=1
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        ) a left join (
+            select  reqIp, city   from  ip1
+            where  dt  &lt;= #{endDate}
+            and  dt >=  #{beginDate}
+            order by dt limit 1 by reqIp
+        ) b  on a.reqIp=b.reqIp
+        group by city
+        ORDER by  uniqExact(a.uu)  desc
+
+    </select>
+
+
+
+    <select id="getSharePageTop10" resultType="com.etocrm.sdk.entity.share.SharePageTop10VO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+       <!--select s.visitpath url ,p.id id ,p.pathName name ,count(1)shareNumTotal ,uniqExact(uu) peopleNumTotal  from   youngor04_all  s  global left  join pathDetailInfo p  on  s.visitpath=p.visitPath
+       where s.pageshare=1  and  notEmpty(s.visitpath)
+        and appkey=#{appKey} and p.pid='0'
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        group  by  s.visitpath,p.id,p.pathName
+        order by uniqExact(uu)  desc
+        limit 10-->
+
+        SELECT b.url url,id ,name ,shareNumTotal,peopleNumTotal ,userPlusNumTotal from
+        (
+        SELECT  visitPath ,count(1) userPlusNumTotal  from  (
+            select visitPath  , t,uu,dt from youngor04_all s
+            where   appShow =1 and  appkey=#{appKey}
+            and  dt  &lt;= #{endDate}
+            order by t limit 1 by uu
+        )
+        where dt >=  #{beginDate}
+        group by visitPath
+        ) a  right  join(
+        select s.visitPath url ,p.id id ,p.pathName name ,count(1)shareNumTotal ,
+        uniqExact(uu) peopleNumTotal  from   youngor04_all  s  global left  join pathDetailInfo p
+        on  s.visitPath=p.visitPath
+        where s.pageShare=1  and pid='0'  and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        group  by  s.visitPath,p.id,p.pathName
+        order by uniqExact(uu)  desc
+        limit 10
+        )  b   on  a.visitPath =b.url
+    </select>
+
+    <select id="getBesharedTop10Num" resultType="com.etocrm.sdk.entity.share.SharePageTop10VO" parameterType="com.etocrm.sdk.entity.share.BesharedTop10VO">
+
+        <if test="type==0">
+            select visitPath url, count(1) turnbackTotal   from   youngor04_all s1
+            where  pageShow=1  and  q like'%etd_sdk_share%'
+            and  visitPath in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            and s1.appkey=#{appKey}
+            and  s1.dt  &lt;= #{endDate}
+            and  s1.dt &gt;=  #{beginDate}
+            group  by  visitPath
+        </if>
+        <!--<if test="type==1">
+           select  visitpath  url,count(1) userPlusNumTotal from
+           (
+            select visitpath , uu,dt from youngor04_all s
+            where appkey=#{appKey} and appshow =1
+            and s.dt &lt;= #{endDate}
+            order by t limit 1 by uu
+            ) where  dt &gt;= #{beginDate}
+            and  visitpath in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            group by visitpath
+        </if>-->
+
+    </select>
+
+    <select id="getShareUserPlusNumList" resultType="com.etocrm.sdk.entity.share.ShareNumVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+
+        <!-- select  u.nickname nickName ,sum(s2.num ) num  from  youngor04_all s global left join (
+            select  visitpath,count(1) num from  youngor04_all where    isfirstday=1   and q  like '%etd_sdk_share%'
+             and appkey=#{appKey}
+             and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+             group by visitpath
+          ) s2 on s.visitpath=s2.visitpath
+         global left join  (select nickname,uu  from  youngor04_all where appkey=#{appKey} and  notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId) group by nickname,uu ) u on u.uu=s.uu
+        where s.pageshare=1
+         and s.appkey=#{appKey}
+        and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+        group  by u.nickname
+       order by sum(s2.num) desc
+       limit 10 -->
+        select u.nickname nickName,s.num num  from
+        (select nickname,uu from youngor04_all where appkey=#{appKey}  and notEmpty(nickname)    group by nickname,uu   ) u
+        global right  join
+        (
+        select  uu,count(1) num from
+        (
+        select  s.uu from  (select  uu,visitPath from  youngor04_all where pageShare=1
+        and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+        group by  uu,visitPath) s
+        global inner join (
+        select visitPath,dt,uu1,uu  from (select  visitPath, visitParamExtractString(json, 'v') AS uu1 ,uu,t,dt from (
+        select   uu,t,q,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,visitPath,dt,
+        arrayJoin(a1) AS json   from
+        (select uu,q, uu,t,visitPath,dt  from  youngor04_all where pageShow =1 and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+        ) a      where  visitParamExtractString(json, 'k')='etd_sdk_share'
+        ) a) a  inner join(
+        select uu,dt  from youngor04_all
+        where appkey=#{appKey} and  dt  &lt;= #{endDate} and appShow=1
+        order by t limit 1  by uu
+        ) b on a.uu=b.uu  and a.dt=b.dt  where b.dt>=#{beginDate}
+        ) s2
+        on (s.visitPath=s2.visitPath and  s.uu=s2.uu1)
+        )a   group by  uu  order by  count( uu)  desc  limit  10
+        ) s
+        on u.uu=s.uu
+        order by  num desc
+
+    </select>
+    <select id="downLoadPageShareList" resultType="com.etocrm.sdk.entity.share.SharePageRepVO" parameterType="com.etocrm.sdk.entity.share.PageShareListVO">
+        select s.visitPath url,p.id,p.pathName name,count(1)shareNum ,uniqExact(uu) peopleNum  from   youngor04_all  s  global left  join pathDetailInfo p  on  s.visitPath=p.visitPath
+        where s.pageShare=1 and visitPath!='un'
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        <if test="url!=null and url!=null">
+            and  s.visitPath=#{url}
+        </if>
+        <if test="name!=null and name!=null">
+            and p.pathName=#{name}
+        </if>
+        group  by  s.visitPath,p.id,p.pathName
+    </select>
+
+    <select id="getPageShare" resultType="com.etocrm.sdk.entity.share.SharePageRepVO" parameterType="com.etocrm.sdk.entity.share.SharePage">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select s.visitPath url ,p.id id ,p.pathName name ,count(1)shareNum ,uniqExact(uu) peopleNum  from   youngor04_all  s  global left  join pathDetailInfo p  on  s.visitPath=p.visitPath
+        where s.pageShare=1 and visitPath!='un'
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        <if test="name!='' and name!=null">
+            and p.pathName=#{name}
+        </if>
+        <if test="url!='' and url!=null">
+            and s.visitPath=#{url}
+        </if>
+        group  by  s.visitPath,p.id,p.pathName
+        limit #{limit},#{pageSize}
+    </select>
+    <select id="getPageShareCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.share.SharePage">
+        select uniqExact( s.visitPath ,p.id ,p.pathName)  from   youngor04_all  s  global left  join pathDetailInfo p  on  s.visitPath=p.visitPath
+        where s.pageShare=1 and  s.visitPath!='un'
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        <if test="name!='' and name!=null">
+            and p.pathName=#{name}
+        </if>
+        <if test="url!='' and url!=null">
+            and s.visitPath=#{url}
+        </if>
+    </select>
+    <select id="getPageSharebackoradd" parameterType="com.etocrm.sdk.entity.share.PageShareListVO" resultType="com.etocrm.sdk.entity.share.SharePageRepVO" >
+        <if test="type==0">
+            select visitPath url, count(1) turnback   from   youngor04_all s1
+            where  pageShow=1 and  q like'%etd_sdk_share%'
+            and  visitPath  in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            and s1.appkey=#{appKey}
+            and  s1.dt  &lt;= #{endDate}
+            and  s1.dt &gt;=  #{beginDate}
+            group  by  visitPath
+        </if>
+        <if test="type==1">
+
+            select
+            a.visitPath  url ,uniqExact(b.uu) userPlusNum,count(1) turnback
+            from (
+            select  visitPath,uu  from  youngor04_all where  pageShow=1 and  q like'%etd_sdk_share%'
+            and visitPath!='un'
+            and appkey=#{appKey}
+            and  dt  &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+            ) a  left join
+            ( select visitPath ,uu ,dt from youngor04_all where appShow=1
+            and appkey=#{appKey}
+            and  dt  &lt;= #{endDate}
+            order by t limit 1 by uu) b  on a.uu=b.uu
+            where dt>= #{beginDate}
+            and  a.visitPath  in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+            group by    a.visitPath
+        </if>
+
+    </select>
+
+
+    <!--NickName，回流量num-->
+    <select id="getShareTurnbackList" resultType="com.etocrm.sdk.entity.share.ShareNumVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        <!-- select u.nickname nickName,s.num num  from
+         (select nickname,uu from youngor04_all where appkey=#{appKey}  and notEmpty(nickname)   and    notEmpty(openId) and  notEmpty(unionId)  ) u
+          global right  join
+          (
+                select  uu,count( uu) num from
+                (
+                   select  s.uu from  (select  uu,visitpath from  youngor04_all where pageshare=1
+                    and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+                    group by  uu,visitpath) s
+                     global inner join (
+                               select  visitpath,
+                                 visitParamExtractString(json,'v') uu1,
+                                  visitParamExtractString(json,'k') k  from  (
+                             select  visitpath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1
+                             from  youngor04_all   where    pageshow=1  and  q like'%etd_sdk_share%'
+                             and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+                        ) a  array join a1 as json where k='etd_sdk_share'
+                       ) s2
+                    on (s.visitpath=s2.visitpath and  s.uu=s2.uu1)
+               )a   group by  uu  order by  count( uu)  desc  limit  10
+          ) s
+          on u.uu=s.uu
+          group by   nickName,num-->
+        select a.uu ,a.nickname ,count(1) from ( select  nickname, visitPath,uu,visitParamExtractString(paramQ,'etd_sdk_share')uui
+        from youngor04_all  s
+        where    pageShow =1   and   s.q like '%etd_sdk_share%'
+        and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+        ) a  left join(
+        select  uu,visitPath from  youngor04_all where pageShare=1
+        and appkey=#{appKey} and  dt  &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+         group  by visitPath ,uu
+        ) b  on a.uui=b.uu where a.visitPath=b.visitPath
+        group  by a.uu ,a.nickname
+        order by  count(a.uu)  desc  limit  10
+    </select>
+
+    <select id="getShareCityList" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.share.SharepathVO">
+      <!--  select  s1.city city ,count(1) num from (
+        select visitpath,back,reqIp from youngor04_all where pageshow=1 and  q like'%etd_sdk_share%'
+        and appkey=#{appKey} and dt &lt;= #{endDate} and dt >= #{beginDate}
+        <if test="list != null and list.size() > 0">
+            and visitpath global in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by  visitpath,back,reqIp
+        ) s global left  join
+        (
+        select reqIp,city,province  from  ip
+        <if test="cityList != null and cityList.size() > 0">
+            where  city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by reqIp,city,province
+        ) s1 on s.reqIp=s1.reqIp
+        <if test="cityList != null and cityList.size() > 0">
+            where  s1.city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by  s1.city -->
+        select city,count(b.reqIp) num ,uniq(b.uu)num1  from (
+        select  uu,visitPath from youngor04_all where pageShare =1
+        and appkey=#{appKey} and dt &lt;= #{endDate} and dt >= #{beginDate}
+        group by uu ,visitPath
+        ) a
+        inner   join (
+        select   uu,q,assumeNotNull(q) te1, back,
+        JSONExtractArrayRaw(te1) a1,visitPath,track,
+        arrayJoin(a1) AS json ,reqIp,
+        visitParamExtractString(json,'v') v,reqIp
+        from
+        (select uu,q, uu,t,visitPath,dt,track,back ,reqIp from  youngor04_all sa where pageShow =1   and q like '%etd_sdk_share%'
+        and appkey=#{appKey} and dt &lt;= #{endDate} and dt >= #{beginDate}
+        ) a      where  visitParamExtractString(json, 'k')='etd_sdk_share'
+        )  b  on a.uu=b.v
+        left join
+        (select reqIp,city  from  ip1
+        where  dt &lt;= #{endDate} and dt >= #{beginDate}
+        group by reqIp,city) d
+        on b.reqIp=d.reqIp
+        where a.visitPath=b.visitPath
+        <if test="list != null and list.size() > 0">
+            and    a.visitPath  global in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        <if test="cityList != null and cityList.size() > 0">
+            and   city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        group by d.city
+
+
+
+    </select>
+    <select id="getShareCityaddList" resultType="java.util.Map"  parameterType="com.etocrm.sdk.entity.share.SharepathVO">
+        select  s1.city city ,uniqExact(uu) num  from
+        ( select  uu , reqIp  from (
+        select visitPath,uu , reqIp ,dt,t from youngor04_all  s where appShow=1 and   dt &lt;=  #{endDate}
+        and appkey=#{appKey}
+        order by t limit 1 by uu
+        ) a where a.dt &gt;=#{beginDate}
+        and a.visitPath global in
+        <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        ) s global left  join
+        (
+        select reqIp,city  from  ip1
+        where  dt &lt;=  #{endDate} and  dt &gt;=#{beginDate}
+        <if test="cityList != null and cityList.size() > 0">
+            and   city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        group by reqIp,city
+        ) s1 on s.reqIp=s1.reqIp
+        <if test="cityList != null and cityList.size() > 0">
+            where  s1.city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+        group  by  s1.city
+
+
+        <!--select  s1.city city ,uniqExact(uu) num from (
+          select  a.visitpath visitpath ,a.uu uu ,a.reqIp reqIp from
+            ( select  visitpath,uu , reqIp ,t from youngor04_all  s   where   appkey=#{appKey} and  appshow =1 and   s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}
+            )  a
+            inner join (
+            select uu,  min(dt) as dt ,min(t) as t         from (
+            select uu,       dt,t
+            from youngor04_all where appshow =1  and appkey =#{appKey}
+            and  dt &lt;=  #{endDate}
+            ORDER BY t asc         ) a
+            group by uu
+            ) c  on  a.uu=c.uu and  a.t=c.t
+            where  c.dt>= #{beginDate}
+            and a.visitpath global in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+
+        ) s global left  join
+        (
+          select reqIp,city,province  from  ip
+        <if test="cityList != null and cityList.size() > 0">
+        where  city  global in
+            <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+             #{item}
+            </foreach>
+        </if>
+          group by reqIp,city,province
+        ) s1 on s.reqIp=s1.reqIp
+        <if test="cityList != null and cityList.size() > 0">
+        where  s1.city  global in
+        <foreach collection="cityList" index="index" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        </if>
+        group by s1.city
+-->
+
+    </select>
+
+    <select id="getAreaShareListExcel" resultType="com.etocrm.sdk.entity.share.UserCityRepVO" parameterType="com.etocrm.sdk.entity.share.UserCitySeaVO">
+        select s1.city city,u.gender gender,u.nickname nickName,count(1) shareNum from (
+        select uu ,reqIp from youngor04_all where appkey=#{appKey} and pageShare=1
+        and dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        ) s
+        global left join (select reqIp,city from ip1   where    dt &lt;= #{endDate}
+        and dt >= #{beginDate}  group by reqIp,city) s1 on s.reqIp=s1.reqIp
+        global left join (
+        select nickname,uu,gender from youngor04_all where appkey=#{appKey}  and  notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId)
+        <if test="userName!=null and userName!=''">
+            and nickname like concat('%',#{userName},'%')
+        </if>
+        group by   nickname,uu,gender
+        ) u on  s.uu=u.uu
+
+        group by s1.city,u.gender,u.nickname
+        order by  shareNum  desc
+    </select>
+
+    <select id="getUserCityCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.share.UserCitySeaVO">
+        SELECT count(1)
+        from (
+        select s1.city,u.nickname,u.gender from   youngor04_all s global  left join (select reqIp,city  from ip1
+        where    dt &lt;= #{endDate}
+        and dt >= #{beginDate}
+        group by reqIp,city) s1 on s.reqIp=s1.reqIp
+        global  left join (select nickname,uu,gender from youngor04_all where appkey=#{appKey}  and  notEmpty(nickname)  and    notEmpty(openId) and  notEmpty(unionId)
+        <if test="userName!=null and userName!=''">
+            and nickname like concat('%',#{userName},'%')
+        </if>
+        group by nickname,uu ,gender ) u on s.uu=u.uu
+        where  s.pageShare=1  and s.appkey=#{appKey} and visitpath!='un'
+        and  s.dt  &lt;= #{endDate}
+        and  s.dt >=  #{beginDate}
+        <if test="userName!=null and userName!=''">
+            and u.nickname like concat('%',#{userName},'%')
+        </if>
+        group  by  s1.city,u.nickname,u.gender
+        )
+
+
+    </select>
+
+    <select id="getAreaShareListList" resultType="com.etocrm.sdk.entity.share.UserCityRepVO" parameterType="com.etocrm.sdk.entity.share.UserCitySeaPageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select s1.city city ,u.nickname nickName ,u.gender gender,count(visitPath) shareNum from   youngor04_all s global  left join (select reqIp,city  from ip1
+         where  dt  &lt;= #{endDate} and dt >=  #{beginDate}
+         group by reqIp,city) s1 on s.reqIp=s1.reqIp
+        global  left join (select nickname,uu,gender from youngor04_all where appkey=#{appKey}  and  notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId)
+        <if test="userName!=null and userName!=''">
+            and nickname like concat('%',#{userName},'%')
+        </if>
+        group by nickname,uu,gender   ) u on s.uu=u.uu
+        where  s.pageShare=1  and s.appkey=#{appKey} and  visitPath!='un'
+        <if test="userName!=null and userName!=''">
+            and u.nickname like concat('%',#{userName},'%')
+        </if>
+        and  s.dt  &lt;= #{endDate}
+        and  s.dt >=  #{beginDate}
+        group  by  s1.city,u.nickname,u.gender
+        order by  shareNum  desc
+        limit #{limit},#{pageSize}
+    </select>
+
+
+
+    <select id="getDateUser" resultType="com.etocrm.sdk.entity.share.DateShareVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select dt date, count(1)shareNum ,uniqExact(uu) peopleNum from
+       youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        group  by  dt
+        order by dt
+    </select>
+
+    <!-- <select id="getDateUseradd" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select  s1.dt dt ,  uniqExact(s1.uu)  num    from   youngor04_all s  global inner join
+         (
+            select  a.visitpath visitpath ,a.uu uu ,c.dt  dt from
+             ( select  visitpath,uu , reqIp ,t from youngor04_all  s   where   appkey=#{appKey} and  appshow =1 and   s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}
+             )  a
+             inner join (
+             select uu,  min(dt) as dt ,min(t) as t         from (
+             select uu,       dt,t
+             from youngor04_all where appshow =1  and appkey =#{appKey}
+             and  dt &lt;=  #{endDate}
+             ORDER BY t asc         ) a
+             group by uu
+             ) c  on  a.uu=c.uu and  a.t=c.t
+             where  c.dt>= #{beginDate}
+         ) s1 on s.visitpath =s1.visitpath and  s.dt=s1.dt
+       where  s.pageshare=1
+        and s.appkey=#{appKey}
+         and  s.dt  &lt;= #{endDate}
+         and  s.dt >=  #{beginDate}
+         group  by s1.dt
+     </select>-->
+
+    <select id="getDateUserPage" resultType="com.etocrm.sdk.entity.share.DateShareVO" parameterType="com.etocrm.sdk.entity.share.DateSharePageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select dt date, count(1)shareNum ,uniqExact(uu) peopleNum from
+        youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        group  by  dt
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getDateUserCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.share.DateSharePageVO">
+       select  count(1) from (
+        select dt date from
+        youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+        group  by  dt
+        )
+     </select>
+
+
+    <select id="getDateUseraddPage" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.share.DateSharePageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  s1.dt dt ,  uniqExact(s1.uu)  num    from   youngor04_all s global inner join
+        (
+        select  a.visitPath visitpath ,a.uu uu ,c.dt dt from
+        ( select  visitpath,uu , reqIp ,dt from youngor04_all  s   where   appkey=#{appKey} and  pageShow =1 and   s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}
+        and  q like '%etd_sdk_share%'
+        )  a
+        inner join (
+        select uu,       dt
+        from youngor04_all where appShow =1  and appkey =#{appKey}
+        and  dt &lt;=  #{endDate}
+        limit 1 by  uu
+        ) c  on  a.uu=c.uu and  a.dt=c.dt
+        where  c.dt>= #{beginDate}
+        )
+        s1 on s.visitPath =s1.visitpath
+        where  s.pageShare=1 and s.appkey=#{appKey}
+        and  s.dt  &lt;= #{endDate}
+        and  s.dt >=  #{beginDate}
+        group  by s1.dt
+        limit #{limit},#{pageSize}
+    </select>
+    <select id="getShareAreaUserCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.share.UserSearchVO">
+        select count(1) from
+        ( select uu  from youngor04_all where   appkey=#{appKey} and  pageShare=1 and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate} ) s
+        global  left  join(
+        select nickname,openId,uu,unionId from youngor04_all where  notEmpty(nickname) and appkey=#{appKey}  and      notEmpty(openId) and  notEmpty(unionId)
+        <if test="content!='' and content!=null">
+            and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by nickname,openId,uu,unionId
+        )  u  on s.uu=u.uu
+        <if test="content!='' and content!=null">
+            where  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+
+    </select>
+
+    <select id="getShareAreaUserList" resultType="com.etocrm.sdk.entity.user.UserDatailVO" parameterType="com.etocrm.sdk.entity.share.UserSearchVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select u.nickname nickName,s.uu userId,u.openId openId ,u.unionId  unionId from
+        ( select uu  from youngor04_all where appkey=#{appKey} and    pageShare=1 and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate} ) s
+        global  left  join(
+        select nickname,openId,uu,unionId from youngor04_all where  notEmpty(nickname) and appkey=#{appKey}  and    notEmpty(openId) and  notEmpty(unionId)
+        <if test="content!='' and content!=null">
+            and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by nickname,openId,uu,unionId
+        )  u  on s.uu=u.uu
+        <if test="content!='' and content!=null">
+            where  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+
+        group by  u.nickname ,s.uu ,u.openId  ,u.unionId
+
+    </select>
+    <!--分享者的url-->
+    <select id="getShareUrlList" resultType="java.lang.String" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+         select  visitPath   from   youngor04_all where  pageShare=1 and visitPath!='un'
+         and appkey=#{appKey}
+          and dt  &lt;= #{endDate}
+          and dt  >= #{beginDate}
+         group by  visitPath
+    </select>
+
+    <select id="getDateUserBuckPage" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.share.DateSharePageVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  s1.dt dt ,  count(1)  num    from   youngor04_all s global inner join
+        (select visitPath ,dt,uu  from youngor04_all where   pageShow=1 and appkey=#{appKey} and dt  &lt;= #{endDate}
+        and dt >=  #{beginDate}  and  q like '%etd_sdk_share%'
+        group by visitPath ,dt,uu
+        )
+        s1 on s.visitPath =s1.visitPath
+        where  s.pageShare=1 and s.appkey=#{appKey}
+        and  s.dt  &lt;= #{endDate}
+        and  s.dt >=  #{beginDate}
+        group  by s1.dt
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getDateUserBuckAll" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select  s.dt dt ,  uniqExact(s1.visitPath,s1.uu)  num    from   youngor04_all s global inner join
+        (
+          select    visitPath,
+                                uu,q,visitParamExtractString(json,'v') uu1
+                                    from  (
+                             select  visitPath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,uu,q
+                             from  youngor04_all  s  where    pageShow=1
+                              and s.appkey=#{appKey} and  s.dt  &lt;= #{endDate} and  s.dt >=  #{beginDate}
+
+                        ) a  array join a1 as json where visitParamExtractString(json,'k')='etd_sdk_share'
+        )
+        s1 on s.visitPath =s1.visitPath  and s.uu=s1.uu1
+        where  s.pageShare=1  and s.appkey=#{appKey} and  s.dt  &lt;= #{endDate} and  s.dt >=  #{beginDate}
+        group  by s.dt
+    </select>
+
+    <select id="getDateUseraddAll" resultType="java.util.HashMap" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+
+        select d.dt  dt , uniqExact(d.uu) num  from  ( select visitPath,uu  from  youngor04_all where  pageShare=1 and appkey=#{appKey} and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate} ) a1
+        global inner join
+        (
+        select c.dt dt , a.visitPath visitPath,a.uu uu,
+        visitParamExtractString(a.paramQ,'etd_sdk_share')shareUu
+         from
+        ( select visitPath ,uu ,dt ,paramQ  from youngor04_all s where appkey=#{appKey} and pageShow =1 and s.dt &gt;=
+        #{beginDate} and s.dt &lt;= #{endDate} and q like '%etd_sdk_share%'
+        ) a
+        inner join (
+        select uu,dt from youngor04_all where appShow=1 and appkey=#{appKey} and  dt &lt;= #{endDate}
+        order by t limit 1 by uu
+        ) c on a.uu=c.uu
+        where c.dt>=#{beginDate}
+        )  d   on  a1.visitPath=d.visitPath  where  a1.uu=d.shareUu
+
+        group by d.dt
+
+
+        <!--   select  s1.dt dt ,  uniqExact(s1.uu)  num    from   sdk0127_all s global inner join
+          (select visitpath ,dt,uu  from sdk0127_all where   isfirstday=1 and appkey=#{appKey} and dt  &lt;= #{endDate}
+          and dt >=  #{beginDate}  and  q like '%etd_sdk_share%'
+          group by visitpath ,dt,uu
+          )
+          s1 on s.visitpath =s1.visitpath
+          where  s.sharetime=1 and s.appkey=#{appKey}
+          and  s.dt  &lt;= #{endDate}
+          and  s.dt >=  #{beginDate}
+          group  by s1.dt-->
+    </select>
+    <sql id="findAPageshare">
+         select visitPath ,v uu from (
+          select  visitPath,
+          visitParamExtractString(json, 'k') AS k,
+          visitParamExtractString(json, 'v') AS v  from       (
+            select  visitPath,assumeNotNull(q) te1, JSONExtractArrayRaw(te1) a1,
+             arrayJoin(a1) AS json
+               from  youngor04_all
+                where    pageShow=1
+                and  q like'%etd_sdk_share%'
+                and appkey=#{appKey}
+                and  dt  &lt;= #{endDate}
+                and  dt >=  #{beginDate}
+                ) a
+        ) a
+      </sql>
+
+    <select id="getShareUserList" parameterType="com.etocrm.sdk.entity.share.ShareUserListVO" resultType="com.etocrm.sdk.entity.share.ShareUser">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  uu userID,
+        unionId,
+        openId,
+        nickname nickName    from   youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and  dt  = #{date}
+        <if test="content!='' and content!=null">
+            and  (nickname like concat('%',#{content},'%')  or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by  uu, unionId,openId,nickname
+        limit #{limit},#{pageSize}
+
+    </select>
+    <select id="getShareUserCount"  parameterType="com.etocrm.sdk.entity.share.ShareUserListVO" resultType="java.lang.Integer">
+        select  count(1)  from (
+        select uu, unionId,openId,nickname from youngor04_all where pageShare=1
+        and appkey=#{appKey}
+        and dt = #{date}
+        <if test="content!='' and content!=null">
+            and (nickname like concat('%',#{content},'%') or
+            openId like concat('%',#{content},'%')
+            )
+        </if>
+        group by  uu, unionId,openId,nickname
+        ) a
+
+    </select>
+
+</mapper>

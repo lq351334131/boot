@@ -1,9 +1,7 @@
-package com.etocrm.sdk.entity.EventVO;
+package com.etocrm.sdk.entity.eventVO;
 
 import lombok.Data;
 import net.sf.oval.constraint.NotNull;
-
-import java.util.Date;
 
 @Data
 public class EventEditVO {

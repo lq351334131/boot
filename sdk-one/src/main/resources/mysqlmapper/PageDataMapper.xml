@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.mysqldao.PageDataMapper">
+    <select id="getVisitPage" parameterType="com.etocrm.sdk.entity.page.PageAccessVo" resultType="com.etocrm.sdk.entity.page.VisitTotalVO">
+        select sum(pv)visitNum,
+        sum(shareNum) shareNum,
+        sum(`exit`) exitNum,
+        sum(openNum) openNum,
+        SEC_TO_TIME  (sum( avgStopTime )  div sum(openNum)) avgStopTime
+        from  totalData
+        where appkey=#{appKey}
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+</mapper>

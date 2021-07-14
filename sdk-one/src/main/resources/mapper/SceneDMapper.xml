@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.ScenceMapper">
+
+    <!--新用户数-->
+    <select id="getNewUser" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.LinkedHashMap">
+         <!-- select  a.scene scene ,count(1) num  from (select scene,t,uu  from youngor04_all where  appshow=1  and  appkey  =#{appKey} and entrypage=1
+           and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+          ) a
+          global inner join (
+              select uu,  min(dt) as dt ,min(t) as t         from (
+             select uu,       dt,t
+             from youngor04_all where appshow =1   and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+             ORDER BY t asc         ) a
+             group by uu
+          ) b on  a.uu=b.uu and a.t=b.t
+          where    dt &gt;=  #{beginDate}
+          group by a.scene-->
+
+        select scene,count(1) num from
+        (
+        SELECT uu,scene,dt FROM youngor04_all s2  where appShow =1
+        and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+        ORDER BY t  LIMIT 1 BY uu
+        )  a where dt &gt;=  #{beginDate}  group by scene
+
+    </select>
+
+    <!--访问次数-->
+    <select id="getVisNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+
+        select scene, count(visitPath) visNum ,uniqExact( openId) accUserNum  from  youngor04_all   where
+        pageShow =1 and entryPage=1
+        and appkey=#{appKey}
+         and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+         group  by scene
+    </select>
+
+    <select id="getVisExitNum" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select scene, count(back) exit from  youngor04_all   where    pageShow =1
+        and appkey=#{appKey} and entryPage=1
+         and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+         group  by scene having count(back)=1
+    </select>
+
+    <!-- 打开参数-->
+    <select id="getOpen" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select scene, uniqExact(back) num  from  youngor04_all   where
+        appkey=#{appKey}  and entryPage=1
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}  group by  scene
+    </select>
+
+    <!-- 均停留时长=小程序停留总时长/打开次数-->
+    <select id="getStopTime" parameterType="com.etocrm.sdk.entity.scene.SceneType" resultType="java.math.BigInteger">
+        select  sum(t1) from (
+        select   max( `t`) m,min( `t`) n,
+        dateDiff('second', toDateTime(n/1000), toDateTime(m/1000))  t1
+        from  youngor04_all where  scene=#{sceneId} and entryPage=1
+        and appkey =#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+
+        group by  back,uu
+        ) as f
+
+    </select>
+
+
+    <select id="getSceneAll"   resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" >
+        select  s1.scene ,s2.sceneName from youngor04_all s1  global left join sceneDetailInfo s2 on s1.scene=s2.sceneId   where
+         s1.appkey =#{appKey} and  s1.entryPage=1
+        and  s1.dt &lt;= #{endDate}
+        and  s1.dt &gt;=  #{beginDate}
+        group by s1.scene,s2.sceneName
+    </select>
+
+    <select id="getSceneDateAll"   resultType="java.util.Map"  parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select  concat(dt,'=',toString(scene)) scene ,s2.sceneName  from youngor04_all s1 global left join sceneDetailInfo s2 on s1.scene=s2.sceneId
+        where  s1.entryPage=1
+        and appkey =#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group by s1.scene,s1.dt,s2.sceneName
+
+    </select>
+
+    <select id="getSceneTopfive"   resultType="java.util.Map"  parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+        select  s1.scene ,s2.sceneName from youngor04_all s1  global left join sceneDetailInfo s2 on s1.scene=s2.sceneId   where
+         s1.appkey =#{appKey} and  s1.entryPage=1
+        and  s1.dt &lt;= #{endDate}
+        and  s1.dt &gt;=  #{beginDate}
+        group by s1.scene,s2.sceneName  order by count(1) desc limit 5
+
+    </select>
+
+    <!--新用户数-->
+    <select id="getNewUserDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.LinkedHashMap">
+      <!--select  concat(b.dt,'=',toString(a.scene)) scene ,count(1) num  from (select scene,t,uu  from youngor04_all where  appshow=1  and  appkey  =#{appKey} and entrypage=1
+           and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+          ) a
+          global inner join (
+              select uu,  min(dt) as dt ,min(t) as t         from (
+             select uu,       dt,t
+             from youngor04_all where appshow =1   and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+             ORDER BY t asc         ) a
+             group by uu
+          ) b on  a.uu=b.uu and a.t=b.t
+          where    dt &gt;=  #{beginDate}
+          group by a.scene,b.dt-->
+
+        select concat(dt,'=',toString(scene)) scene ,count(1) num from
+        (
+        SELECT scene,dt FROM youngor04_all s2  where appShow =1
+        and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+        ORDER BY t  LIMIT 1 BY uu
+        )  a where dt &gt;=  #{beginDate}  group by scene,dt
+
+    </select>
+
+    <!--访问次数-->
+    <select id="getVisNumDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+
+        select concat(dt,'=',toString(scene)) scene , count(visitPath) visNum ,uniqExact( openId) accUserNum
+         from  youngor04_all   where pageShow=1
+        and appkey=#{appKey}
+         and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        group  by scene,dt
+    </select>
+
+    <select id="getExitDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select concat(dt,'=',toString(scene)) scene ,count(back)exit
+        from  youngor04_all   s
+        where appkey=#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        and pageShow=1
+        and  s.entryPage=1
+        group  by scene,dt having count(back)=1
+    </select>
+
+
+
+    <!-- 打开参数-->
+    <select id="getOpenDate" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.HashMap">
+        select concat(dt,'=',toString(scene)) scene, uniqExact(back) num  from  youngor04_all  s  where
+        appkey=#{appKey}  and  s.entryPage=1
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}  group by  scene,dt
+    </select>
+
+    <select id="getNewUserScene" parameterType="com.etocrm.sdk.entity.scene.SceneDataTypeVO" resultType="java.lang.Integer">
+         <!--select count(1) num  from (select scene,t,uu  from youngor04_all where  appshow=1  and  appkey  =#{appKey} and entrypage=1
+         and  scene=#{sceneId}
+           and  dt &lt;= #{endDate}
+            and  dt &gt;=  #{beginDate}
+          ) a
+          global inner join (
+              select uu,  min(dt) as dt ,min(t) as t         from (
+             select uu,       dt,t
+             from youngor04_all where appshow =1   and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+             ORDER BY t asc         ) a
+             group by uu
+          ) b on  a.uu=b.uu and a.t=b.t
+          where    b.dt &gt;=  #{beginDate} -->
+        select count(1) num from
+        (
+        SELECT scene,entryPage,dt FROM youngor04_all s2  where appShow =1
+        and  appkey  =#{appKey}  and  dt &lt;= #{endDate}
+        ORDER BY t  LIMIT 1 BY uu
+        ) a where   dt &gt;=  #{beginDate}  and  entryPage=1
+        and  scene=#{sceneId}
+
+
+    </select>
+
+    <!--访问次数-->
+    <select id="getVisNumScene" parameterType="com.etocrm.sdk.entity.scene.SceneDataTypeVO" resultType="java.util.HashMap">
+
+        select count(visitPath) visNum ,uniqExact( openId) accUserNum from  youngor04_all   where
+        pageShow=1  and scene=#{sceneId}
+        and appkey=#{appKey}
+         and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+    <!-- 打开参数-->
+    <select id="getOpenScene" parameterType="com.etocrm.sdk.entity.scene.SceneDataTypeVO" resultType="java.lang.Integer">
+        select  uniqExact(back) num  from  youngor04_all   where
+        appkey=#{appKey}       and scene=#{sceneId}  and entryPage=1
+        and  dt &lt;=  #{endDate}
+        and  dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getUserScenePage" parameterType="com.etocrm.sdk.entity.scene.SceneDateVO" resultType="com.etocrm.sdk.entity.user.UserLostReturnRepVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  nickname nickName,openId,unionId ,uu from  youngor04_all
+        where  appkey=#{appKey}       and scene=#{sceneId}
+        and  dt =  #{queryDate}
+         group  by uu,nickname,openId,unionId
+         limit #{limit}, #{pageSize}
+    </select>
+
+    <select id="getUserSenceCount" parameterType="com.etocrm.sdk.entity.scene.SceneDateVO" resultType="java.lang.Integer">
+        select  uniqExact(nickname,openId,unionId ,uu) from  youngor04_all
+        where  appkey=#{appKey}       and scene=#{sceneId}
+       and  dt = #{queryDate}
+    </select>
+
+    <select id="getUserSceneId" parameterType="com.etocrm.sdk.entity.scene.SceneExcelVO" resultType="com.etocrm.sdk.entity.user.UserDatailVO">
+        select  nickname nickName,openId,unionId ,uu userId from  youngor04_all
+        where  appkey=#{appKey}       and scene=#{sceneId}
+        and  dt = #{queryDate}
+        group  by uu,nickname,openId,unionId
+    </select>
+
+    <select id="getScenePage"   resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.scene.SceneDataVO" >
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+        select  s1.scene ,s2.sceneName from youngor04_all s1 global left join sceneDetailInfo s2 on s1.scene=s2.sceneId   where  s1.entryPage=1
+        and   s1.appkey =#{appKey}
+        and  s1.dt &lt;= #{endDate}
+        and  s1.dt &gt;= #{beginDate}
+        group by s1.scene,s2.sceneName
+        limit #{limit},#{pageSize}
+    </select>
+
+    <select id="getUserGet" resultType="com.etocrm.sdk.entity.user.UserDatailVO" parameterType="com.etocrm.sdk.entity.scene.SceneUserVO">
+       select   nickname nickName,openId,unionId ,uu userId  from  youngor04_all s
+       where   appkey=#{appKey}
+        and dt = #{queryDate} and  entryPage=1
+        and scene global in (
+        select sceneId from sceneDetailInfo
+        <if test="sceneTypeName!=null  and sceneTypeName!=''">
+            where  sceneName like concat(#{sceneTypeName},'%')
+        </if>
+        )
+        group by uu,nickname,openId,unionId
+    </select>
+
+    <select id="getUserGetCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.scene.SceneUserVO">
+        select   uniqExact(nickname,openId,unionId,uu)  from  youngor04_all
+        where   appkey=#{appKey} and  entryPage=1
+        and  dt =  #{queryDate}
+        and  scene  global in  (
+        select sceneId from sceneDetailInfo
+        <if test="sceneTypeName!=null  and sceneTypeName!=''">
+            where  sceneName like concat(#{sceneTypeName},'%')
+        </if>
+         )
+    </select>
+
+    <select id="getSceneDetailInfo" resultType="java.util.Map">
+        select sceneId , sceneName  from   sceneDetailInfo
+    </select>
+
+    <select id="getVisExitScene" parameterType="com.etocrm.sdk.entity.scene.SceneDataTypeVO" resultType="java.lang.Integer">
+
+       select  count(1)  from (
+        select back from  youngor04_all   where   scene=#{sceneId}
+        and appkey=#{appKey} and  pageShow=1
+         and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+         group by  back having count(back)=1
+         )
+    </select>
+
+    <select id="getSceneStopTime" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO" resultType="java.util.Map">
+        select
+                s1.scene scene ,
+                sum(t1)  stopTime
+        from
+                (
+                select
+                        back, max(`t`) m, min(`t`) n, dateDiff('second',
+                        toDateTime(n / 1000),
+                        toDateTime(m / 1000)) t1
+                from
+                        youngor04_all  where appkey=#{appKey}   and  dt &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+                group by
+                        back )s
+        left join (
+              select  scene,back from youngor04_all s where appkey=#{appKey}   and  dt &lt;= #{endDate}  and  dt &gt;=  #{beginDate}
+               group by  scene,back) s1
+                on  s.back = s1.back
+          group by
+                s1.scene
+    </select>
+
+    <insert id="batchInsert" parameterType="com.etocrm.sdk.entity.scene.SceneCkVO">
+        INSERT INTO test.sceneDetailInfo
+        (sceneId, remark,sceneName, typeName)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.sceneId},  #{item.remark}, #{item.sceneName}, #{item.typeName})
+        </foreach>
+    </insert>
+
+    <select id="getUserShareScene" resultType="com.etocrm.sdk.entity.scene.SceneTotalVO" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select count(1)shareNumTotal ,uniqExact(uu) peopleNumTotal from  youngor04_all where pageShare=1
+        and scene>0
+        and appkey=#{appKey}
+        and  dt  &lt;= #{endDate}
+        and  dt >=  #{beginDate}
+    </select>
+    <select id="getUserSharebackflow" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select count(1)  from
+      ( select  visitPath,uu   from youngor04_all  s   where   appkey=#{appKey} and    s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate} and  s.pageShow=1
+       and q like '%etd_sdk_share%')  a  inner  join
+      (  select  s.visitPath  from  youngor04_all s   where  s.pageShare=1
+            and s.appkey=#{appKey}  and  s.dt  &lt;= #{endDate}  and scene>0
+            and  s.dt &gt;=  #{beginDate}
+             group by  visitPath
+      ) b  on  a.visitPath=b.visitPath
+     </select>
+
+    <select id="getUserShareAdd" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.databroad.DataBroadVO">
+      select uniqExact(a.uu)  from
+      ( select  visitPath,uu ,dt  from youngor04_all  s   where   appkey=#{appKey} and  pageShow =1 and   s.dt &gt;=  #{beginDate}  and  s.dt  &lt;= #{endDate}   and   s.q like '%etd_sdk_share%'
+       )  a
+         inner join (
+            select uu,dt  from youngor04_all
+              where appkey=#{appKey} and appShow=1 and  dt  &lt;= #{endDate}
+             order by t limit 1  by uu
+         ) c  on  a.uu=c.uu  and a.dt=c.dt
+
+        inner  join
+      (  select  s.visitPath  from  youngor04_all s   where  s.pageShare=1 and  scene>0
+            and s.appkey=#{appKey}  and  s.dt  &lt;= #{endDate}
+            and  s.dt &gt;=  #{beginDate}
+            group by   s.visitPath
+      ) b  on  a.visitPath=b.visitPath
+         where  c.dt &gt;=  #{beginDate}
+    </select>
+
+    <select id="getScene"   resultType="java.util.Map" parameterType="com.etocrm.sdk.entity.scene.SceneIdVO" >
+        select  s1.scene ,s2.sceneName from youngor04_all s1  global left join sceneDetailInfo s2 on s1.scene=s2.sceneId   where
+         s1.appkey =#{appKey} and  s1.entryPage=1
+        and  s1.dt &lt;= #{endDate}
+        and  s1.dt &gt;=  #{beginDate}
+        <if test="sceneId !=null and sceneId !=null">
+             and  s1.scene=#{sceneId}
+        </if>
+        group by s1.scene,s2.sceneName
+    </select>
+
+    <select id="getSceneIdDate"   resultType="java.util.Map"  parameterType="com.etocrm.sdk.entity.scene.SceneIdVO">
+        select  concat(dt,'=',toString(scene)) scene ,s2.sceneName  from youngor04_all s1 global left join sceneDetailInfo s2 on s1.scene=s2.sceneId
+        where  s1.entryPage=1
+        and appkey =#{appKey}
+        and  dt &lt;= #{endDate}
+        and  dt &gt;=  #{beginDate}
+        <if test="sceneId !=null and sceneId !=null">
+            and  s1.scene=#{sceneId}
+        </if>
+        group by s1.scene,s1.dt,s2.sceneName
+
+    </select>
+
+    
+
+</mapper>

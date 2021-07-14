@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.FunnelMapper">
+    <insert id="insert" parameterType="com.etocrm.sdk.entity.funnel.FunnelIdVO">
+       insert into funnel_detail (id,funnelName,typeId) values (#{id},#{funnelName},#{typeId})
+    </insert>
+    <insert id="batchInsert" parameterType="com.etocrm.sdk.entity.funnel.FunnelSetpsVO">
+        insert into funnel_detail (funnelId,stepId,stepName,stepType,peId) values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.funnelId},  #{item.stepId}, #{item.stepName}, #{item.peId})
+        </foreach>
+
+    </insert>
+    
+    <update id="editFunnel" parameterType="com.etocrm.sdk.entity.funnel.FunnelEditVO">
+          alter table funnel_detail update funnelName=#{funnelName},typeId=#{typeId} where id=#{id}
+    </update>
+
+    <!--<delete id="deleteId" parameterType="java.lang.String">
+          alter table funnel_detail delete where id=#{id}
+    </delete>-->
+    <update id="deleteId" parameterType="java.lang.String" >
+
+      alter table funnel_detail update is_del=1 where id=#{id}
+    </update>
+
+    <!--<delete id="deleteDetailId" parameterType="java.lang.String">
+          alter table funnel_detail delete where funnelId=#{id}
+    </delete>-->
+
+    <update id="deleteDetailId" parameterType="java.lang.String" >
+      alter table funnel_detail update is_del=1 where funnelId=#{id}
+    </update>
+
+    <select id="getId" resultType="com.etocrm.sdk.entity.funnel.FunnelSingleRepVO" parameterType="java.lang.String" >
+        select   id,funnelName,typeId  from  funnel_detail where id=#{id}
+
+    </select>
+
+    <select id="getDetailId" resultType="com.etocrm.sdk.entity.funnel.FunnelSetpsIdVO" parameterType="java.lang.String" >
+        select funnelId,stepId,stepName,stepType,peId  from  funnel_detail where funnelId=#{id}
+    </select>
+    <select id="getFunnelCount" resultType="java.lang.Integer" parameterType="com.etocrm.sdk.entity.funnel.FunnelVO">
+     select count(1) from  funnel_detail where funnelId='0'
+     <if test="funnelName==null and funnelName!=''">
+        and  funnelName=#{funnelName}
+     </if>
+    </select>
+    <select id="getFunnelPage" resultType="com.etocrm.sdk.entity.funnel.FunnelRepVO" parameterType="com.etocrm.sdk.entity.funnel.FunnelVO">
+        <bind name="limit" value="(pageIndex-1)*pageSize"></bind>
+         select   id,funnelName, toString(createTime) from funnel_detail
+        where funnelId='0'
+        <if test="funnelName==null and funnelName!=''">
+            and  funnelName=#{funnelName}
+        </if>
+        order by createTime desc
+        limit #{limit}, #{pageSize}
+
+    </select>
+
+    <select id="getFunnPage" parameterType="java.util.Map" resultType="java.util.Map">
+        select  dt,
+            if(index1==0,0,round(divide(reg, index1),2)) "pageRate1",
+            if(reg==0,0,round(divide(address, reg),2))"pageRate2",
+            if(address==0,0,round(divide(personalCenter, address),2) )"pageRate3"
+            from
+            (
+            select dt,sum(if(visitpath=='subpackages/pointModule/pages/turnplate/index',1,0)) index1,
+              sum(if(visitpath=='pages/homeModule/pages/register/index',1,0)) reg,
+              sum(if(visitpath=='subpackages/pointModule/pages/address/index',1,0)) address,
+              sum(if(visitpath=='pages/homeModule/pages/personalCenter/index',1,0)) personalCenter
+            from   sdk0208 s    group by dt
+            )
+    </select>
+
+
+</mapper>

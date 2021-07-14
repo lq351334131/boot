@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.etocrm.sdk.dao.ReportMapper">
+
+    <select id="getMember" resultType="java.lang.Long" parameterType="java.util.Map">
+        select count(uu) from  youngortest_all where  appkey=#{appKey} and isnewmember=1
+        <if test="endDate!='' and endDate!=null">
+            and  dt &lt;=  #{endDate}
+        </if>
+        <if test="beginDate!='' and beginDate!=null">
+            and  dt &gt;=  #{beginDate}
+        </if>
+    </select>
+
+    <select id="getMemberByDay" resultType="java.util.Map" parameterType="java.util.Map">
+        select  dt,count(uu) num from  youngortest_all where  appkey=#{appKey} and isnewmember=1
+        <if test="endDate!='' and endDate!=null">
+            and  dt &lt;=  #{endDate}
+        </if>
+        <if test="beginDate!='' and beginDate!=null">
+            and  dt &gt;=  #{beginDate}
+        </if>
+        group by  dt
+    </select>
+
+
+
+</mapper>
